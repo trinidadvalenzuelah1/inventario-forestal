@@ -80,6 +80,16 @@
     <button onclick="sincronizar()" style="background: #1976d2;">SINCRONIZAR A NUBE</button>
 </div>
 
+    <div>
+    <label>Grado de Infestación (1-4):</label>
+    <select id="sanidad_grado">
+        <option value="1">1 - No presente</option>
+        <option value="2">2 - Poco (0-33%)</option>
+        <option value="3">3 - Moderado (33-66%)</option>
+        <option value="4">4 - Intenso (>66%)</option>
+    </select>
+</div>
+    
 <script>
     // CONFIGURACIÓN SUPABASE
     const supabaseUrl = 'https://xrgjbnelerhztobbciix.supabase.co';
@@ -136,7 +146,48 @@
     if ('serviceWorker' in navigator) {
         navigator.serviceWorker.register('sw.js');
     }
+
+    const CATALOGO_ESPECIES = [
+    {id: 1, nombre: "Pinus cooperi"},
+    {id: 2, nombre: "Pinus durangensis"},
+    {id: 56, nombre: "Quercus salicifolia"},
+    {id: 82, nombre: "Quercus sideroxyla"},
+    {id: 112, nombre: "Otras hojosas"}
+    // Se pueden añadir los 112 registros aquí
+];
+
+const CATALOGO_UAS = [
+    {id: 1, nombre: "Forestal en producción maderable"},
+    {id: 2, nombre: "Forestal en protección"},
+    {id: 17, nombre: "Asentamientos humanos"}
+];
+
+  function cargarCatalogos() {
+    const selectEsp = document.getElementById('esp1'); // El ID del select en tu HTML
+    const selectUas = document.getElementById('uso_actual');
+
+    // Cargar Especies
+    CATALOGO_ESPECIES.forEach(esp => {
+        let opt = document.createElement('option');
+        opt.value = esp.id;
+        opt.innerHTML = `${esp.id} - ${esp.nombre}`;
+        selectEsp.appendChild(opt);
+    });
+
+    // Cargar Uso de Suelo
+    CATALOGO_UAS.forEach(uas => {
+        let opt = document.createElement('option');
+        opt.value = uas.id;
+        opt.innerHTML = uas.nombre;
+        selectUas.appendChild(opt);
+    });
+}
+
+// Ejecutar al cargar la página
+window.onload = cargarCatalogos;
+    
 </script>
 
 </body>
+
 </html>
