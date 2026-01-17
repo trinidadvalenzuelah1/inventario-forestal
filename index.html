@@ -4,226 +4,264 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Inventario Forestal - Jesús María Tosibuena</title>
-    <link rel="manifest" href="manifest.json">
+    
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/proj4js/2.7.5/proj4.js"></script>
 
     <style>
-        :root { --forest-green: #2e7d32; --alert-red: #d32f2f; }
-        body { font-family: sans-serif; margin: 0; background: #f4f4f4; }
-        header { background: var(--forest-green); color: white; padding: 1rem; text-align: center; }
-        .container { padding: 15px; }
+        :root { --forest-green: #2e7d32; --alert-red: #d32f2f; --info-blue: #1976d2; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; background: #eceff1; color: #333; }
+        header { background: var(--forest-green); color: white; padding: 1rem; text-align: center; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
+        .container { padding: 15px; max-width: 800px; margin: auto; }
         .card { background: white; padding: 15px; border-radius: 8px; margin-bottom: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-        .gps-box { background: #333; color: #0f0; font-family: monospace; padding: 10px; border-radius: 4px; }
-        input, select { width: 100%; padding: 10px; margin: 5px 0; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+        h3 { margin-top: 0; color: var(--forest-green); border-bottom: 2px solid #eee; padding-bottom: 5px; }
+        
+        .gps-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; background: #333; color: #0f0; font-family: monospace; padding: 10px; border-radius: 4px; margin-bottom: 10px; }
+        .gps-item { border: 1px solid #444; padding: 5px; border-radius: 3px; }
+        
+        label { display: block; font-weight: bold; margin-top: 10px; font-size: 0.9rem; }
+        input, select, textarea { width: 100%; padding: 12px; margin: 5px 0; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; font-size: 1rem; }
+        
         .audit-error { border: 2px solid var(--alert-red) !important; background: #ffebee; }
-        button { width: 100%; padding: 12px; background: var(--forest-green); color: white; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; margin-top: 10px; }
-        #map { height: 200px; width: 100%; border-radius: 8px; margin-top: 10px; }
-        .photo-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-        .status-badge { padding: 10px; border-radius: 4px; font-weight: bold; text-align: center; margin-top: 10px; }
+        .btn { width: 100%; padding: 15px; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; margin-top: 10px; font-size: 1rem; color: white; transition: 0.3s; }
+        .btn-save { background: var(--forest-green); }
+        .btn-sync { background: var(--info-blue); }
+        .btn-clear { background: #757575; }
+        
+        #map { height: 180px; width: 100%; border-radius: 8px; margin-top: 5px; border: 1px solid #ccc; }
+        .photo-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; text-align: center; }
+        .status-badge { padding: 12px; border-radius: 4px; font-weight: bold; text-align: center; margin-top: 10px; border: 1px solid transparent; }
     </style>
 </head>
 <body>
 
 <header>
     <h1>Jesús María Tosibuena</h1>
-    <small>Inventario Forestal Sinaloa v1.0</small>
+    <small>Inventario Sinaloa - Registro Digital de Campo</small>
 </header>
 
 <div class="container">
-    <div class="card" style="border-left: 5px solid #1976d2;">
+    <div class="card" style="border-top: 6px solid var(--info-blue);">
         <h3>Control de Rodal</h3>
-        <input type="text" id="rodal" placeholder="ID del Rodal (Ej: R-01)" onchange="renderizarProgreso(this.value)">
-        <p>Sitios en este rodal: <span id="contador_sitios_rodal">0</span> / 2</p>
-        <div id="status_rodal" class="status-badge">⚠️ Rodal incompleto</div>
+        <label>ID del Rodal / Predio:</label>
+        <input type="text" id="rodal" placeholder="Ej: R-01" oninput="renderizarProgreso(this.value)">
+        <div id="status_rodal" class="status-badge">Ingrese un rodal para ver progreso</div>
+        <p style="font-size: 0.85rem; margin-bottom: 0;">Sitios capturados: <span id="contador_sitios_rodal">0</span> / 2 [Mínimo Sugerido]</p>
     </div>
 
     <div class="card">
-        <div class="gps-box">
-            X: <span id="utm_x">0.0</span> | Y: <span id="utm_y">0.0</span><br>
-            Precisión: <span id="acc">0</span>m | ASNM: <span id="alt">--</span>m
+        <h3>Localización Geográfica</h3>
+        <div class="gps-grid">
+            <div class="gps-item">Lat: <span id="lat">0.0</span></div>
+            <div class="gps-item">Lon: <span id="lon">0.0</span></div>
+            <div class="gps-item">UTM X: <span id="utm_x">0.0</span></div>
+            <div class="gps-item">UTM Y: <span id="utm_y">0.0</span></div>
+            <div class="gps-item">Precisión: <span id="acc">0</span>m</div>
+            <div class="gps-item">ASNM: <span id="alt">--</span>m</div>
         </div>
         <div id="map"></div>
     </div>
 
     <div class="card">
         <h3>I. Información del Sitio</h3>
-        <input type="number" id="num_sitio" placeholder="Número de Sitio">
+        <label>Número de Sitio:</label>
+        <input type="number" id="num_sitio" placeholder="Número según diseño">
+        
+        <label>Fecha de Levantamiento[cite: 6]:</label>
         <input type="date" id="fecha">
-        <select id="exposicion"><option value="">Seleccione Exposición...</option></select>
-        <select id="uso_actual"><option value="">Uso Actual (UAS)...</option></select>
-        <input type="number" id="pendiente" placeholder="Pendiente % (0-100)" onchange="validarPendiente(this)">
-    </div>
-
-    <div class="card">
-        <h3>Fotografías Cardinales</h3>
-        <div class="photo-grid">
-            <div>N <input type="file" accept="image/*" capture="camera" id="fN"></div>
-            <div>S <input type="file" accept="image/*" capture="camera" id="fS"></div>
-            <div>E <input type="file" accept="image/*" capture="camera" id="fE"></div>
-            <div>O <input type="file" accept="image/*" capture="camera" id="fO"></div>
-        </div>
+        
+        <label>Exposición[cite: 18, 181]:</label>
+        <select id="exposicion"><option value="">Seleccione...</option></select>
+        
+        <label>Uso Actual (UAS)[cite: 31, 181]:</label>
+        <select id="uso_actual"><option value="">Seleccione...</option></select>
+        
+        <label>Pendiente (%)[cite: 17, 149]:</label>
+        <input type="number" id="pendiente" placeholder="0 - 100" onchange="validarPendiente(this)">
     </div>
 
     <div class="card">
         <h3>II. Arbolado Comercial (Dn ≥ 7.5)</h3>
         <div id="lista-arboles">
             <div class="fila-arbol" style="display: flex; gap: 5px; margin-bottom: 8px;">
-                <select id="esp1" style="flex:2; font-size: 0.8rem;"><option value="">Especie...</option></select>
+                <select id="esp1" style="flex:2.5; font-size: 0.85rem;"><option value="">Especie</option></select>
                 <input type="number" step="0.1" placeholder="Dn" style="flex:1" onchange="validarDn(this)">
                 <input type="number" step="0.1" placeholder="At" style="flex:1" id="at1">
                 <input type="number" step="0.1" placeholder="Ac" style="flex:1" onchange="validarAc(this, 'at1')">
             </div>
         </div>
-        <button type="button" onclick="agregarFilaArbol()" style="background:#666; font-size: 0.8rem; height: 35px;">+ Agregar Árbol</button>
+        <button type="button" class="btn" style="background:#607d8b; padding:8px;" onclick="agregarFilaArbol()">+ Añadir Árbol</button>
     </div>
 
     <div class="card">
-        <label>Grado de Infestación (1-4):</label>
+        <h3>III. Sanidad y Daños</h3>
+        <label>Calificación de Sanidad (Cs):</label>
         <select id="sanidad_grado">
-            <option value="1">1 - No presente</option>
-            <option value="2">2 - Poco (0-33%)</option>
-            <option value="3">3 - Moderado (33-66%)</option>
-            <option value="4">4 - Intenso (>66%)</option>
+            <option value="1">1 - No presente (Sano)</option>
+            <option value="2">2 - Poco (1-33% daño)</option>
+            <option value="3">3 - Moderado (33-66% daño)</option>
+            <option value="4">4 - Intenso (>66% daño)</option>
         </select>
     </div>
 
-    <button onclick="guardarLocal()">GUARDAR EN DISPOSITIVO</button>
-    <button onclick="sincronizar()" style="background: #1976d2;">SINCRONIZAR A NUBE</button>
-    <button onclick="limpiarFormularioConConfirmacion()" style="background: #9e9e9e; margin-top: 30px;">LIMPIAR FORMULARIO (NUEVO SITIO)</button>
+    <button class="btn btn-save" onclick="guardarSitio()">GUARDAR EN DISPOSITIVO</button>
+    <button class="btn btn-sync" onclick="sincronizarSupabase()">SINCRONIZAR A LA NUBE</button>
+    <button class="btn btn-clear" onclick="resetFormulario()">NUEVO SITIO / LIMPIAR</button>
 </div>
 
 <script>
-    // 1. CONFIGURACIÓN Y CATÁLOGOS
+    // --- CONFIGURACIÓN DE PROYECCIÓN UTM (Zona 13N - Sinaloa) ---
+    const wgs84 = "+proj=longlat +datum=WGS84 +no_defs";
+    const utm13N = "+proj=utm +zone=13 +datum=WGS84 +units=m +no_defs";
+
+    // --- CONFIGURACIÓN SUPABASE ---
     const supabaseUrl = 'https://xrgjbnelerhztobbciix.supabase.co';
-    const supabaseKey = 'TU_KEY'; // Mantén tu llave aquí
+    const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...'; // Su llave anon
     const _supabase = supabase.createClient(supabaseUrl, supabaseKey);
 
-    const CATALOGO_ESPECIES = [
-        {id: 1, nombre: "Pinus cooperi"}, {id: 2, nombre: "Pinus durangensis"}, {id: 3, nombre: "Pinus arizonica"},
-        {id: 4, nombre: "Pinus engelmannii"}, {id: 5, nombre: "Pinus leiophylla"}, {id: 82, nombre: "Quercus sideroxyla"},
-        {id: 100, nombre: "Quercus spp"}, {id: 112, nombre: "Otras hojosas"}
-    ];
-
-    const CATALOGO_EXPOSICION = [
-        {id: 1, nombre: "N (Norte)"}, {id: 2, nombre: "NE (Noreste)"}, {id: 3, nombre: "E (Este)"},
-        {id: 4, nombre: "SE (Sureste)"}, {id: 5, nombre: "S (Sur)"}, {id: 9, nombre: "Zenital"}
-    ];
-
-    const CATALOGO_UAS = [
-        {id: 1, nombre: "Forestal en producción"}, {id: 2, nombre: "Forestal en protección"}, {id: 17, nombre: "Asentamientos"}
-    ];
-
-    // 2. INICIALIZACIÓN
-    window.onload = () => {
-        cargarCatalogos();
-        const r = document.getElementById('rodal').value;
-        if(r) renderizarProgreso(r);
-        document.getElementById('fecha').valueAsDate = new Date();
+    // --- CATÁLOGOS EXTRAÍDOS DEL FORMATO  ---
+    const CATALOGOS = {
+        especies: [
+            {id: 1, n: "Pinus cooperi"}, {id: 2, n: "Pinus durangensis"}, {id: 3, n: "Pinus arizonica"},
+            {id: 4, n: "Pinus engelmannii"}, {id: 5, n: "Pinus leiophylla"}, {id: 56, n: "Quercus salicifolia"},
+            {id: 57, n: "Quercus castanea"}, {id: 82, n: "Quercus sideroxyla"}, {id: 112, n: "Otras hojosas"}
+        ],
+        exposicion: [
+            {id: 1, n: "Zenital (Z)"}, {id: 2, n: "Norte (N)"}, {id: 3, n: "Noreste (NE)"},
+            {id: 4, n: "Este (E)"}, {id: 5, n: "Sureste (SE)"}, {id: 6, n: "Sur (S)"},
+            {id: 7, n: "Suroeste (SO)"}, {id: 8, n: "Oeste (O)"}, {id: 9, n: "Noroeste (NO)"}
+        ],
+        uas: [
+            {id: 1, n: "Forestal en producción maderable"}, {id: 2, n: "Forestal en Protección"},
+            {id: 17, n: "Asentamientos humanos"}, {id: 10, n: "Agricultura y fruticultura"}
+        ]
     };
 
-    function cargarCatalogos() {
+    // --- INICIALIZACIÓN ---
+    window.onload = () => {
+        poblarSelects();
+        document.getElementById('fecha').valueAsDate = new Date();
+        const r = document.getElementById('rodal').value;
+        if(r) renderizarProgreso(r);
+        iniciarGPS();
+    };
+
+    function poblarSelects() {
         const sEsp = document.getElementById('esp1');
         const sEx = document.getElementById('exposicion');
         const sUas = document.getElementById('uso_actual');
 
-        CATALOGO_ESPECIES.forEach(e => sEsp.options.add(new Option(`${e.id}-${e.nombre}`, e.id)));
-        CATALOGO_EXPOSICION.forEach(e => sEx.options.add(new Option(e.nombre, e.id)));
-        CATALOGO_UAS.forEach(e => sUas.options.add(new Option(e.nombre, e.id)));
+        CATALOGOS.especies.forEach(e => sEsp.options.add(new Option(`${e.id}-${e.n}`, e.id)));
+        CATALOGOS.exposicion.forEach(e => sEx.options.add(new Option(e.n, e.id)));
+        CATALOGOS.uas.forEach(e => sUas.options.add(new Option(e.n, e.id)));
     }
 
-    // 3. DINÁMICA DE ÁRBOLES
+    // --- LÓGICA DE GEOPOSICIÓN Y UTM ---
+    var map = L.map('map').setView([25.0, -107.5], 7);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+    var marker = L.marker([0,0]).addTo(map);
+
+    function iniciarGPS() {
+        navigator.geolocation.watchPosition(pos => {
+            const {latitude, longitude, accuracy, altitude} = pos.coords;
+            
+            // Conversión UTM paralela
+            const coordsUTM = proj4(wgs84, utm13N, [longitude, latitude]);
+
+            document.getElementById('lat').innerText = latitude.toFixed(6);
+            document.getElementById('lon').innerText = longitude.toFixed(6);
+            document.getElementById('utm_x').innerText = coordsUTM[0].toFixed(2);
+            document.getElementById('utm_y').innerText = coordsUTM[1].toFixed(2);
+            document.getElementById('acc').innerText = accuracy.toFixed(0);
+            document.getElementById('alt').innerText = altitude ? altitude.toFixed(0) : '--';
+
+            marker.setLatLng([latitude, longitude]);
+            map.setView([latitude, longitude], 16);
+        }, null, {enableHighAccuracy: true});
+    }
+
+    // --- LÓGICA DE NEGOCIO (RODALES Y VALIDACIÓN) ---
     let contadorArboles = 1;
     function agregarFilaArbol() {
         contadorArboles++;
-        const container = document.getElementById('lista-arboles');
+        const lista = document.getElementById('lista-arboles');
         const div = document.createElement('div');
         div.className = 'fila-arbol';
         div.style = "display: flex; gap: 5px; margin-bottom: 8px;";
         const idAt = `at${contadorArboles}`;
         
         div.innerHTML = `
-            <select id="esp${contadorArboles}" style="flex:2; font-size: 0.8rem;"><option value="">Especie...</option></select>
+            <select id="esp${contadorArboles}" style="flex:2.5; font-size: 0.85rem;"><option value="">Especie</option></select>
             <input type="number" step="0.1" placeholder="Dn" style="flex:1" onchange="validarDn(this)">
             <input type="number" step="0.1" placeholder="At" style="flex:1" id="${idAt}">
             <input type="number" step="0.1" placeholder="Ac" style="flex:1" onchange="validarAc(this, '${idAt}')">
         `;
-        container.appendChild(div);
+        lista.appendChild(div);
         const sel = document.getElementById(`esp${contadorArboles}`);
-        CATALOGO_ESPECIES.forEach(e => sel.options.add(new Option(`${e.id}-${e.nombre}`, e.id)));
+        CATALOGOS.especies.forEach(e => sel.options.add(new Option(`${e.id}-${e.n}`, e.id)));
     }
 
-    // 4. AUDITORÍA
+    // Auditorías Automáticas
     function validarDn(el) { el.value < 7.5 ? el.classList.add('audit-error') : el.classList.remove('audit-error'); }
     function validarAc(el, idAt) {
-        let at = document.getElementById(idAt).value;
-        (parseFloat(el.value) > parseFloat(at)) ? el.classList.add('audit-error') : el.classList.remove('audit-error');
+        const atVal = parseFloat(document.getElementById(idAt).value);
+        (parseFloat(el.value) >= atVal) ? el.classList.add('audit-error') : el.classList.remove('audit-error');
     }
     function validarPendiente(el) { (el.value < 0 || el.value > 100) ? el.classList.add('audit-error') : el.classList.remove('audit-error'); }
 
-    // 5. CONTROL DE RODAL Y GUARDADO
-    let sitiosPorRodal = JSON.parse(localStorage.getItem('progreso_rodal')) || {};
+    // Control de Rodales
+    let sitesData = JSON.parse(localStorage.getItem('tosibuena_muestreo')) || {};
 
     function renderizarProgreso(rodalId) {
         if(!rodalId) return;
-        const cuenta = sitiosPorRodal[rodalId] || 0;
-        document.getElementById('contador_sitios_rodal').innerText = cuenta;
+        const total = Object.values(sitesData).filter(s => s.rodal === rodalId).length;
+        document.getElementById('contador_sitios_rodal').innerText = total;
         const status = document.getElementById('status_rodal');
-        if(cuenta >= 2) {
-            status.innerText = "✅ Mínimo cumplido";
-            status.style.background = "#e8f5e9"; status.style.color = "#2e7d32";
+        if(total >= 2) {
+            status.innerText = "✅ REQUISITO MÍNIMO OK";
+            status.style.background = "#c8e6c9"; status.style.color = "#2e7d32";
         } else {
-            status.innerText = `⚠️ Faltan ${2-cuenta} sitios`;
-            status.style.background = "#ffebee"; status.style.color = "#d32f2f";
+            status.innerText = "⚠️ RECOLECTAR MÁS SITIOS";
+            status.style.background = "#ffcdd2"; status.style.color = "#b71c1c";
         }
     }
 
-    function guardarLocal() {
-        const r = document.getElementById('rodal').value;
-        if(!r) return alert("Falta ID de Rodal");
+    function guardarSitio() {
+        const rodalId = document.getElementById('rodal').value;
+        if(!rodalId) return alert("Error: Debe asignar un ID de Rodal");
         
-        sitiosPorRodal[r] = (sitiosPorRodal[r] || 0) + 1;
-        localStorage.setItem('progreso_rodal', JSON.stringify(sitiosPorRodal));
-        renderizarProgreso(r);
-        alert("Sitio guardado localmente.");
+        const sitioId = Date.now();
+        const data = {
+            id: sitioId,
+            rodal: rodalId,
+            num_sitio: document.getElementById('num_sitio').value,
+            utm_x: document.getElementById('utm_x').innerText,
+            utm_y: document.getElementById('utm_y').innerText,
+            fecha: document.getElementById('fecha').value
+        };
+        
+        sitesData[sitioId] = data;
+        localStorage.setItem('tosibuena_muestreo', JSON.stringify(sitesData));
+        renderizarProgreso(rodalId);
+        alert("Sitio guardado en memoria local.");
     }
 
-    function limpiarFormularioConConfirmacion() {
-        if(confirm("¿Limpiar para nuevo sitio?")) {
-            document.getElementById('num_sitio').value = '';
-            document.getElementById('lista-arboles').innerHTML = `
-                <div class="fila-arbol" style="display: flex; gap: 5px; margin-bottom: 8px;">
-                    <select id="esp1" style="flex:2; font-size: 0.8rem;"><option value="">Especie...</option></select>
-                    <input type="number" step="0.1" placeholder="Dn" style="flex:1" onchange="validarDn(this)">
-                    <input type="number" step="0.1" placeholder="At" style="flex:1" id="at1">
-                    <input type="number" step="0.1" placeholder="Ac" style="flex:1" onchange="validarAc(this, 'at1')">
-                </div>`;
-            contadorArboles = 1;
-            cargarCatalogos();
-        }
-    }
-
-    function sincronizar() {
+    async function sincronizarSupabase() {
         const r = document.getElementById('rodal').value;
-        if((sitiosPorRodal[r] || 0) < 2) {
-            if(!confirm("Rodal incompleto (<2 sitios). ¿Sincronizar?")) return;
-        }
-        alert("Sincronizando con Supabase...");
+        const total = Object.values(sitesData).filter(s => s.rodal === r).length;
+        if(total < 2) if(!confirm("Rodal incompleto. ¿Sincronizar de todos modos?")) return;
+
+        alert("Conectando con Supabase para subir " + Object.keys(sitesData).length + " sitios...");
+        // Aquí iría el código .insert() de Supabase con el objeto sitesData
     }
 
-    // 6. MAPA Y GPS
-    var map = L.map('map').setView([25.8, -108.0], 13);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
-    var marker = L.marker([0,0]).addTo(map);
-    navigator.geolocation.watchPosition(pos => {
-        const {latitude, longitude, accuracy, altitude} = pos.coords;
-        document.getElementById('utm_x').innerText = longitude.toFixed(6);
-        document.getElementById('utm_y').innerText = latitude.toFixed(6);
-        document.getElementById('acc').innerText = accuracy.toFixed(1);
-        document.getElementById('alt').innerText = altitude ? altitude.toFixed(0) : '--';
-        marker.setLatLng([latitude, longitude]);
-    }, null, {enableHighAccuracy: true});
+    function resetFormulario() {
+        if(confirm("¿Seguro que desea limpiar? Los datos no guardados se perderán.")) {
+            location.reload();
+        }
+    }
 </script>
 </body>
 </html>
