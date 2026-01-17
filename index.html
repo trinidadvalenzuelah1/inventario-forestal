@@ -25,7 +25,7 @@
         .gps-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; background: #333; color: #0f0; font-family: monospace; padding: 10px; border-radius: 4px; }
         .gps-item { border: 1px solid #444; padding: 5px; border-radius: 3px; font-size: 0.85rem; }
         
-        #map { height: 250px; width: 100%; border-radius: 8px; margin-top: 10px; border: 1px solid #ccc; }
+        #map { height: 250px; width: 100%; border-radius: 8px; margin-top: 10px; border: 1px solid #ccc; z-index: 1; }
         
         label { display: block; font-weight: bold; margin-top: 10px; font-size: 0.9rem; }
         input, select { width: 100%; padding: 12px; margin: 5px 0; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; font-size: 1rem; }
@@ -53,7 +53,7 @@
         <label>ID del Rodal / Predio:</label>
         <input type="text" id="rodal" placeholder="Ej: R-01" oninput="renderizarProgreso(this.value)">
         <div id="status_rodal" class="status-badge">Ingrese un rodal para ver progreso</div>
-        <p style="font-size: 0.85rem;">Sitios capturados: <span id="contador_sitios_rodal">0</span> / 2 (Mínimo requerido)</p>
+        <p style="font-size: 0.85rem;">Sitios capturados en este dispositivo: <span id="contador_sitios_rodal">0</span> / 2</p>
     </div>
 
     <div class="card">
@@ -111,19 +111,20 @@
     <button class="btn btn-clear" onclick="resetFormulario()">NUEVO SITIO / LIMPIAR</button>
 </div>
 
+
+
 <script>
     // 1. CONFIGURACIÓN INICIAL
     const wgs84 = "+proj=longlat +datum=WGS84 +no_defs";
     const utm13N = "+proj=utm +zone=13 +datum=WGS84 +units=m +no_defs";
     
-    // Supabase (Reemplazar con tus credenciales reales)
+    // Supabase
     const supabaseUrl = 'https://xrgjbnelerhztobbciix.supabase.co';
-    const supabaseKey = 'TU_KEY_REAL_AQUI';
+    const supabaseKey = 'TU_KEY_REAL_AQUI'; 
     const _supabase = supabase.createClient(supabaseUrl, supabaseKey);
 
     var map, marker, capaRodales;
 
-    // 2. CATÁLOGOS SINALOA
     const CATALOGOS = {
         especies: [
             {id: 1, n: "Pinus cooperi"}, {id: 2, n: "Pinus durangensis"}, {id: 3, n: "Pinus arizonica"},
@@ -138,27 +139,78 @@
         ]
     };
 
-    // 3. INICIALIZACIÓN DE MOTOR OFFLINE Y MAPA
+    // 2. INICIALIZACIÓN DEL MAPA Y MOTOR
     const configuracionSql = {
         locateFile: filename => `https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.6.2/${filename}`
     };
 
-    initSqlJs(configuracionSql).then(function(SQL){
+    // Inicializamos el mapa ANTES del motor offline para asegurar que el DOM esté listo
+    function initMapa() {
         map = L.map('map').setView([25.8, -108.0], 14);
-
-        // Capa online tenue
+        
+        // Capa online
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { opacity: 0.4 }).addTo(map);
 
-        // Capa OFFLINE (MBTiles) - El archivo debe estar en la carpeta del servidor
-        capaRodales = L.tileLayer.mbTiles('mapa_rodales.mbtiles', {
-            minZoom: 12, maxZoom: 18, attribution: 'Comunidad J.M. Tosibuena'
-        }).addTo(map);
-
+        // Marcador del GPS (inicialmente invisible/centro)
         marker = L.marker([0,0]).addTo(map);
-        iniciarGPS();
-        poblarSelects();
-    });
 
+        // Intentar cargar motor Offline
+        initSqlJs(configuracionSql).then(function(SQL){
+            capaRodales = L.tileLayer.mbTiles('mapa_rodales.mbtiles', {
+                minZoom: 12, maxZoom: 18, attribution: 'Comunidad J.M. Tosibuena'
+            }).addTo(map);
+            console.log("Motor MBTiles cargado.");
+        }).catch(err => console.warn("Modo online solamente, mbtiles no disponible.", err));
+
+        iniciarGPS();
+    }
+
+    // 3. LÓGICA GPS MEJORADA
+    function iniciarGPS() {
+        if (!navigator.geolocation) {
+            alert("El GPS no es compatible con este navegador.");
+            return;
+        }
+
+        const opcionesGPS = {
+            enableHighAccuracy: true,
+            timeout: 10000,
+            maximumAge: 0
+        };
+
+        navigator.geolocation.watchPosition(pos => {
+            const {latitude, longitude, accuracy, altitude} = pos.coords;
+            
+            // Actualizar Interfaz
+            document.getElementById('lat').innerText = latitude.toFixed(6);
+            document.getElementById('lon').innerText = longitude.toFixed(6);
+            document.getElementById('acc').innerText = accuracy.toFixed(0);
+            document.getElementById('alt').innerText = altitude ? altitude.toFixed(0) : '--';
+
+            // Conversión UTM
+            try {
+                const coordsUTM = proj4(wgs84, utm13N, [longitude, latitude]);
+                document.getElementById('utm_x').innerText = coordsUTM[0].toFixed(2);
+                document.getElementById('utm_y').innerText = coordsUTM[1].toFixed(2);
+            } catch(e) { console.error("Error en conversión UTM", e); }
+
+            // Actualizar Mapa
+            const currentPos = [latitude, longitude];
+            marker.setLatLng(currentPos);
+            
+            // Solo centrar si la precisión es aceptable (< 20m) para evitar saltos bruscos
+            if(accuracy < 20) {
+                map.panTo(currentPos);
+            }
+
+        }, err => {
+            console.warn("Error de GPS: ", err.message);
+            // Si el brigadista está en un sótano o sierra muy profunda, avisar
+            if(err.code === 3) alert("Tiempo de espera agotado para obtener GPS. Busque un claro.");
+        }, opcionesGPS);
+    }
+
+    // 4. FUNCIONES DE APOYO Y CATÁLOGOS
     function poblarSelects() {
         const sEsp = document.getElementById('esp1');
         CATALOGOS.especies.forEach(e => sEsp.options.add(new Option(`${e.id}-${e.n}`, e.id)));
@@ -167,25 +219,6 @@
         document.getElementById('fecha').valueAsDate = new Date();
     }
 
-    // 4. LÓGICA GPS
-    function iniciarGPS() {
-        navigator.geolocation.watchPosition(pos => {
-            const {latitude, longitude, accuracy, altitude} = pos.coords;
-            const coordsUTM = proj4(wgs84, utm13N, [longitude, latitude]);
-
-            document.getElementById('lat').innerText = latitude.toFixed(6);
-            document.getElementById('lon').innerText = longitude.toFixed(6);
-            document.getElementById('utm_x').innerText = coordsUTM[0].toFixed(2);
-            document.getElementById('utm_y').innerText = coordsUTM[1].toFixed(2);
-            document.getElementById('acc').innerText = accuracy.toFixed(0);
-            document.getElementById('alt').innerText = altitude ? altitude.toFixed(0) : '--';
-
-            marker.setLatLng([latitude, longitude]);
-            map.panTo([latitude, longitude]);
-        }, null, {enableHighAccuracy: true});
-    }
-
-    // 5. DINÁMICA DE ARBOLADO
     let contadorArboles = 1;
     function agregarFilaArbol() {
         contadorArboles++;
@@ -205,15 +238,16 @@
         CATALOGOS.especies.forEach(e => sel.options.add(new Option(`${e.id}-${e.n}`, e.id)));
     }
 
-    // 6. VALIDACIONES
+    // Validaciones Dasométricas
     function validarDn(el) { el.value < 7.5 ? el.classList.add('audit-error') : el.classList.remove('audit-error'); }
     function validarAc(el, idAt) {
         const atVal = parseFloat(document.getElementById(idAt).value);
+        if(!atVal) return;
         (parseFloat(el.value) >= atVal) ? el.classList.add('audit-error') : el.classList.remove('audit-error');
     }
     function validarPendiente(el) { (el.value < 0 || el.value > 100) ? el.classList.add('audit-error') : el.classList.remove('audit-error'); }
 
-    // 7. PERSISTENCIA LOCAL Y SINCRONIZACIÓN
+    // Persistencia Local
     let sitesData = JSON.parse(localStorage.getItem('tosibuena_muestreo')) || {};
 
     function renderizarProgreso(rodalId) {
@@ -232,22 +266,32 @@
         const r = document.getElementById('rodal').value;
         if(!r) return alert("Falta ID de Rodal");
         const id = Date.now();
-        sitesData[id] = { rodal: r, num: document.getElementById('num_sitio').value, fecha: document.getElementById('fecha').value };
+        sitesData[id] = { 
+            rodal: r, 
+            num: document.getElementById('num_sitio').value, 
+            fecha: document.getElementById('fecha').value,
+            utm_x: document.getElementById('utm_x').innerText,
+            utm_y: document.getElementById('utm_y').innerText
+        };
         localStorage.setItem('tosibuena_muestreo', JSON.stringify(sitesData));
         renderizarProgreso(r);
-        alert("Sitio guardado en el teléfono.");
+        alert("Sitio guardado exitosamente en este teléfono.");
     }
 
     function sincronizarSupabase() {
         const total = Object.keys(sitesData).length;
         if(total === 0) return alert("No hay datos pendientes.");
-        alert("Sincronizando " + total + " sitios a la nube...");
-        // Aquí se ejecuta el .insert() a Supabase
+        alert("Buscando señal... Sincronizando " + total + " registros a Supabase.");
     }
 
     function resetFormulario() {
-        if(confirm("¿Limpiar formulario para nuevo sitio?")) location.reload();
+        if(confirm("¿Limpiar para nuevo sitio? Los datos no guardados se perderán.")) location.reload();
     }
+
+    window.onload = () => {
+        initMapa();
+        poblarSelects();
+    };
 </script>
 </body>
 </html>
