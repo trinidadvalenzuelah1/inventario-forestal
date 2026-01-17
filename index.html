@@ -161,10 +161,30 @@
     }
 
     // --- LÓGICA DE GEOPOSICIÓN Y UTM ---
-    var map = L.map('map').setView([25.0, -107.5], 7);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
-    var marker = L.marker([0,0]).addTo(map);
+// 1. Inicializar el mapa
+var map = L.map('map').setView([25.8, -108.0], 14); // Coordenadas aproximadas Sinaloa
 
+// 2. Capa base online (opcional, solo si hay señal)
+var osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    opacity: 0.5 // Transparencia para ver tus rodales debajo
+}).addTo(map);
+
+// 3. CAPA OFFLINE (MBTiles)
+// Importante: El archivo mapa_rodales.mbtiles debe estar en el servidor o carpeta local
+var capaRodales = L.tileLayer.mbTiles('mapa_rodales.mbtiles', {
+    minZoom: 12,
+    maxZoom: 18,
+    attribution: 'Comunidad Jesús María Tosibuena'
+}).addTo(map);
+
+// Manejo de errores de carga offline
+capaRodales.on('databaseloaded', function(ev) {
+    console.log('Mapa offline de rodales cargado con éxito');
+}).on('databaseerror', function(ev) {
+    console.error('Error al cargar el mapa offline:', ev.error);
+});
+
+    
     function iniciarGPS() {
         navigator.geolocation.watchPosition(pos => {
             const {latitude, longitude, accuracy, altitude} = pos.coords;
@@ -267,4 +287,5 @@
 </script>
 </body>
 </html>
+
 
