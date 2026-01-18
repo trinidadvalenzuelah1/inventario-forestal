@@ -2,296 +2,2322 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Inventario Forestal - Jesús María Tosibuena</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Inventario Forestal v2.0 - Jesús María Tosibuena</title>
     
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
-    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/proj4js/2.7.5/proj4.js"></script>
+    <!-- Leaflet -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.6.2/sql-wasm.js"></script>
+    <!-- Proj4js para conversión UTM -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/proj4js/2.9.2/proj4.js"></script>
+    
+    <!-- SQL.js y MBTiles para mapas offline -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/sql-wasm.js"></script>
     <script src="https://unpkg.com/leaflet-mbtiles/leaflet-mbtiles.js"></script>
     
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+    <!-- Supabase -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+    
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#1b5e20">
+    <link rel="icon" href="icon-192.png">
 
     <style>
-        :root { --forest-green: #2e7d32; --alert-red: #d32f2f; --info-blue: #1976d2; }
-        body { font-family: 'Segoe UI', Tahoma, sans-serif; margin: 0; background: #eceff1; color: #333; }
-        header { background: var(--forest-green); color: white; padding: 1rem; text-align: center; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
-        .container { padding: 15px; max-width: 800px; margin: auto; }
-        .card { background: white; padding: 15px; border-radius: 8px; margin-bottom: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-        h3 { margin-top: 0; color: var(--forest-green); border-bottom: 2px solid #eee; padding-bottom: 5px; }
-        
-        .gps-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; background: #333; color: #0f0; font-family: monospace; padding: 10px; border-radius: 4px; }
-        .gps-item { border: 1px solid #444; padding: 5px; border-radius: 3px; font-size: 0.85rem; }
-        
-        #map { height: 250px; width: 100%; border-radius: 8px; margin-top: 10px; border: 1px solid #ccc; z-index: 1; }
-        
-        label { display: block; font-weight: bold; margin-top: 10px; font-size: 0.9rem; }
-        input, select { width: 100%; padding: 12px; margin: 5px 0; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; font-size: 1rem; }
-        
-        .audit-error { border: 2px solid var(--alert-red) !important; background: #ffebee; }
-        
-        .btn { width: 100%; padding: 15px; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; margin-top: 10px; font-size: 1rem; color: white; transition: 0.3s; }
-        .btn-save { background: var(--forest-green); }
-        .btn-sync { background: var(--info-blue); }
-        .btn-clear { background: #757575; }
-        
-        .status-badge { padding: 12px; border-radius: 4px; font-weight: bold; text-align: center; margin-top: 10px; }
+        :root {
+            --forest-primary: #1b5e20;
+            --forest-secondary: #2e7d32;
+            --forest-light: #4caf50;
+            --forest-dark: #0d3d14;
+            --accent-amber: #ff6f00;
+            --accent-blue: #0277bd;
+            --success: #2e7d32;
+            --warning: #f57c00;
+            --error: #c62828;
+            --info: #0288d1;
+            --bg-primary: #fafafa;
+            --bg-secondary: #ffffff;
+            --text-primary: #212121;
+            --text-secondary: #757575;
+            --border: #e0e0e0;
+            --shadow: rgba(0,0,0,0.1);
+            --shadow-lg: rgba(0,0,0,0.2);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, #f5f7fa 0%, #e8f5e9 100%);
+            color: var(--text-primary);
+            min-height: 100vh;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* ========== HEADER ========== */
+        .header {
+            background: linear-gradient(135deg, var(--forest-dark) 0%, var(--forest-primary) 100%);
+            color: white;
+            padding: 1.5rem 1rem;
+            box-shadow: 0 4px 20px var(--shadow-lg);
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+
+        .header-content {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header h1 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 0.25rem;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .header-subtitle {
+            font-size: 0.875rem;
+            opacity: 0.9;
+            font-weight: 300;
+        }
+
+        .header-stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 0.75rem;
+            margin-top: 1rem;
+        }
+
+        .stat-card {
+            background: rgba(255,255,255,0.15);
+            backdrop-filter: blur(10px);
+            padding: 0.75rem;
+            border-radius: 8px;
+            text-align: center;
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+
+        .stat-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .stat-label {
+            font-size: 0.7rem;
+            opacity: 0.9;
+            margin-top: 0.25rem;
+        }
+
+        /* ========== CONTAINER ========== */
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 1rem;
+        }
+
+        /* ========== RODAL SELECTOR ========== */
+        .rodal-selector {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 16px;
+            box-shadow: 0 2px 12px var(--shadow);
+            margin-bottom: 1.5rem;
+            border-left: 4px solid var(--forest-primary);
+        }
+
+        .rodal-selector h2 {
+            font-size: 1.1rem;
+            color: var(--forest-primary);
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .input-group {
+            margin-bottom: 1rem;
+        }
+
+        .input-group label {
+            display: block;
+            font-weight: 600;
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+            margin-bottom: 0.5rem;
+        }
+
+        .input-group input,
+        .input-group select,
+        .input-group textarea {
+            width: 100%;
+            padding: 0.875rem;
+            border: 2px solid var(--border);
+            border-radius: 8px;
+            font-size: 1rem;
+            font-family: inherit;
+            transition: all 0.3s ease;
+            background: white;
+        }
+
+        .input-group input:focus,
+        .input-group select:focus,
+        .input-group textarea:focus {
+            outline: none;
+            border-color: var(--forest-light);
+            box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.1);
+        }
+
+        .status-badge {
+            padding: 1rem;
+            border-radius: 8px;
+            font-weight: 600;
+            text-align: center;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+
+        .status-pending {
+            background: #fff3e0;
+            color: #e65100;
+            border: 2px solid #ffb74d;
+        }
+
+        .status-complete {
+            background: #e8f5e9;
+            color: #1b5e20;
+            border: 2px solid #66bb6a;
+        }
+
+        .status-progress {
+            background: #e3f2fd;
+            color: #01579b;
+            border: 2px solid #42a5f5;
+        }
+
+        /* ========== TABS ========== */
+        .tabs {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 2px 12px var(--shadow);
+            overflow: hidden;
+            margin-bottom: 1.5rem;
+        }
+
+        .tab-buttons {
+            display: flex;
+            overflow-x: auto;
+            background: #f5f5f5;
+            border-bottom: 2px solid var(--border);
+            scrollbar-width: thin;
+        }
+
+        .tab-buttons::-webkit-scrollbar {
+            height: 4px;
+        }
+
+        .tab-buttons::-webkit-scrollbar-thumb {
+            background: var(--forest-light);
+            border-radius: 4px;
+        }
+
+        .tab-btn {
+            flex: 1;
+            min-width: 140px;
+            padding: 1rem;
+            border: none;
+            background: transparent;
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.25rem;
+            position: relative;
+        }
+
+        .tab-btn i {
+            font-size: 1.25rem;
+        }
+
+        .tab-btn.active {
+            background: white;
+            color: var(--forest-primary);
+        }
+
+        .tab-btn.active::after {
+            content: '';
+            position: absolute;
+            bottom: -2px;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: var(--forest-primary);
+        }
+
+        .tab-progress {
+            font-size: 0.7rem;
+            color: var(--accent-amber);
+            font-weight: 400;
+        }
+
+        .tab-content {
+            display: none;
+            padding: 1.5rem;
+        }
+
+        .tab-content.active {
+            display: block;
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* ========== SECTIONS ========== */
+        .section {
+            margin-bottom: 2rem;
+        }
+
+        .section-header {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            margin-bottom: 1rem;
+            padding-bottom: 0.75rem;
+            border-bottom: 2px solid var(--border);
+        }
+
+        .section-header h3 {
+            font-size: 1.1rem;
+            color: var(--forest-primary);
+            font-weight: 700;
+        }
+
+        .section-icon {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, var(--forest-light), var(--forest-primary));
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 1.25rem;
+        }
+
+        /* ========== GPS PANEL ========== */
+        .gps-panel {
+            background: #1a1a1a;
+            border-radius: 12px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            border: 2px solid #333;
+        }
+
+        .gps-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 0.75rem;
+            margin-bottom: 1rem;
+        }
+
+        .gps-item {
+            background: #0a0a0a;
+            border: 1px solid #00ff00;
+            border-radius: 6px;
+            padding: 0.75rem;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .gps-label {
+            font-size: 0.7rem;
+            color: #00ff00;
+            margin-bottom: 0.25rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .gps-value {
+            font-size: 1rem;
+            color: #0f0;
+            font-weight: 600;
+        }
+
+        .gps-accuracy {
+            margin-top: 0.5rem;
+            padding: 0.5rem;
+            background: rgba(0, 255, 0, 0.1);
+            border-radius: 4px;
+            text-align: center;
+            font-size: 0.8rem;
+            color: #0f0;
+        }
+
+        .accuracy-excellent { border-color: #0f0; color: #0f0; }
+        .accuracy-good { border-color: #ffeb3b; color: #ffeb3b; }
+        .accuracy-poor { border-color: #f44336; color: #f44336; }
+
+        /* ========== MAP ========== */
+        #map {
+            height: 300px;
+            border-radius: 12px;
+            border: 2px solid var(--border);
+            box-shadow: 0 4px 12px var(--shadow);
+            margin-top: 1rem;
+        }
+
+        /* ========== FORM GRID ========== */
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1rem;
+        }
+
+        .form-grid-2 {
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        }
+
+        /* ========== VALIDATION ========== */
+        .input-error {
+            border-color: var(--error) !important;
+            background: #ffebee !important;
+        }
+
+        .input-warning {
+            border-color: var(--warning) !important;
+            background: #fff3e0 !important;
+        }
+
+        .input-success {
+            border-color: var(--success) !important;
+            background: #e8f5e9 !important;
+        }
+
+        .error-message {
+            color: var(--error);
+            font-size: 0.75rem;
+            margin-top: 0.25rem;
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+        }
+
+        /* ========== ÁRBOL TABLE ========== */
+        .arbol-container {
+            background: #f9f9f9;
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .arbol-table {
+            width: 100%;
+            overflow-x: auto;
+        }
+
+        .arbol-row {
+            display: grid;
+            grid-template-columns: 50px 2fr 80px 80px 80px 80px 50px;
+            gap: 0.5rem;
+            padding: 0.75rem;
+            background: white;
+            border-radius: 8px;
+            margin-bottom: 0.5rem;
+            align-items: center;
+            border: 1px solid var(--border);
+            transition: all 0.2s ease;
+        }
+
+        .arbol-row:hover {
+            box-shadow: 0 2px 8px var(--shadow);
+            transform: translateY(-1px);
+        }
+
+        .arbol-header {
+            background: var(--forest-primary);
+            color: white;
+            font-weight: 600;
+            font-size: 0.8rem;
+        }
+
+        .arbol-number {
+            font-weight: 700;
+            color: var(--forest-primary);
+            font-size: 1.1rem;
+            text-align: center;
+        }
+
+        .arbol-row input,
+        .arbol-row select {
+            padding: 0.5rem;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            font-size: 0.875rem;
+        }
+
+        .arbol-delete {
+            background: var(--error);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 32px;
+            height: 32px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+        }
+
+        .arbol-delete:hover {
+            background: #b71c1c;
+            transform: scale(1.1);
+        }
+
+        /* ========== BUTTONS ========== */
+        .btn {
+            padding: 1rem 2rem;
+            border: none;
+            border-radius: 12px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.75rem;
+            width: 100%;
+            margin-top: 1rem;
+            font-family: inherit;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .btn i {
+            font-size: 1.2rem;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--forest-primary), var(--forest-light));
+            color: white;
+            box-shadow: 0 4px 12px rgba(27, 94, 32, 0.3);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(27, 94, 32, 0.4);
+        }
+
+        .btn-secondary {
+            background: linear-gradient(135deg, var(--accent-blue), #0288d1);
+            color: white;
+            box-shadow: 0 4px 12px rgba(2, 119, 189, 0.3);
+        }
+
+        .btn-secondary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(2, 119, 189, 0.4);
+        }
+
+        .btn-add {
+            background: var(--accent-amber);
+            color: white;
+            padding: 0.75rem 1.5rem;
+            font-size: 0.875rem;
+        }
+
+        .btn-add:hover {
+            background: #e65100;
+        }
+
+        .btn-clear {
+            background: #9e9e9e;
+            color: white;
+        }
+
+        .btn-clear:hover {
+            background: #757575;
+        }
+
+        .btn-group {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+            margin-top: 2rem;
+        }
+
+        /* ========== PHOTO CAPTURE ========== */
+        .photo-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        .photo-card {
+            background: #f5f5f5;
+            border: 2px dashed var(--border);
+            border-radius: 12px;
+            padding: 1rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .photo-card:hover {
+            border-color: var(--forest-light);
+            background: #e8f5e9;
+        }
+
+        .photo-card.has-photo {
+            border-style: solid;
+            border-color: var(--success);
+        }
+
+        .photo-preview {
+            width: 100%;
+            height: 150px;
+            object-fit: cover;
+            border-radius: 8px;
+            display: none;
+        }
+
+        .photo-preview.show {
+            display: block;
+        }
+
+        .photo-label {
+            font-weight: 600;
+            color: var(--forest-primary);
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+
+        .photo-instruction {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+        }
+
+        .photo-icon {
+            font-size: 2rem;
+            color: var(--forest-light);
+            margin: 1rem 0;
+        }
+
+        /* ========== LOADING ========== */
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.8);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+        }
+
+        .loading-overlay.show {
+            display: flex;
+        }
+
+        .loading-content {
+            background: white;
+            padding: 2rem;
+            border-radius: 16px;
+            text-align: center;
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid var(--forest-primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 1rem;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* ========== ALERTS ========== */
+        .alert {
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from { transform: translateX(-100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+        .alert-success {
+            background: #e8f5e9;
+            border: 1px solid #4caf50;
+            color: #1b5e20;
+        }
+
+        .alert-error {
+            background: #ffebee;
+            border: 1px solid #f44336;
+            color: #b71c1c;
+        }
+
+        .alert-info {
+            background: #e3f2fd;
+            border: 1px solid #2196f3;
+            color: #01579b;
+        }
+
+        /* ========== RESPONSIVE ========== */
+        @media (max-width: 768px) {
+            .header h1 { font-size: 1.25rem; }
+            .header-stats { grid-template-columns: 1fr; }
+            .form-grid { grid-template-columns: 1fr; }
+            .tab-btn { min-width: 100px; font-size: 0.75rem; }
+            .arbol-row {
+                grid-template-columns: 40px 1.5fr 70px 70px 70px 70px 40px;
+                gap: 0.25rem;
+                padding: 0.5rem;
+            }
+            .btn-group { grid-template-columns: 1fr; }
+        }
+
+        /* ========== UTILITY CLASSES ========== */
+        .hidden { display: none !important; }
+        .text-center { text-align: center; }
+        .mt-1 { margin-top: 1rem; }
+        .mb-1 { margin-bottom: 1rem; }
+        .fw-bold { font-weight: 700; }
     </style>
 </head>
 <body>
 
-<header>
-    <h1>Jesús María Tosibuena</h1>
-    <small>Sinaloa - Inventario Forestal de Manejo</small>
-</header>
-
-<div class="container">
-    <div class="card" style="border-top: 6px solid var(--info-blue);">
-        <h3>Control de Rodal</h3>
-        <label>ID del Rodal / Predio:</label>
-        <input type="text" id="rodal" placeholder="Ej: R-01" oninput="renderizarProgreso(this.value)">
-        <div id="status_rodal" class="status-badge">Ingrese un rodal para ver progreso</div>
-        <p style="font-size: 0.85rem;">Sitios capturados en este dispositivo: <span id="contador_sitios_rodal">0</span> / 2</p>
+<!-- LOADING OVERLAY -->
+<div class="loading-overlay" id="loadingOverlay">
+    <div class="loading-content">
+        <div class="spinner"></div>
+        <p id="loadingMessage">Procesando...</p>
     </div>
-
-    <div class="card">
-        <h3>Localización Geográfica</h3>
-        <div class="gps-grid">
-            <div class="gps-item">Lat: <span id="lat">0.0</span></div>
-            <div class="gps-item">Lon: <span id="lon">0.0</span></div>
-            <div class="gps-item">UTM X: <span id="utm_x">0.0</span></div>
-            <div class="gps-item">UTM Y: <span id="utm_y">0.0</span></div>
-            <div class="gps-item">Precisión: <span id="acc">0</span>m</div>
-            <div class="gps-item">ASNM: <span id="alt">--</span>m</div>
-        </div>
-        <div id="map"></div>
-    </div>
-
-    <div class="card">
-        <h3>I. Información del Sitio</h3>
-        <label>Número de Sitio:</label>
-        <input type="number" id="num_sitio" placeholder="Número según diseño">
-        <label>Fecha:</label>
-        <input type="date" id="fecha">
-        <label>Exposición (Cat. 16):</label>
-        <select id="exposicion"><option value="">Seleccione...</option></select>
-        <label>Uso Actual UAS (Cat. 22):</label>
-        <select id="uso_actual"><option value="">Seleccione...</option></select>
-        <label>Pendiente (%):</label>
-        <input type="number" id="pendiente" placeholder="0 - 100" onchange="validarPendiente(this)">
-    </div>
-
-    <div class="card">
-        <h3>II. Arbolado Comercial (Dn ≥ 7.5)</h3>
-        <div id="lista-arboles">
-            <div class="fila-arbol" style="display: flex; gap: 5px; margin-bottom: 8px;">
-                <select id="esp1" style="flex:2.5; font-size: 0.85rem;"><option value="">Especie</option></select>
-                <input type="number" step="0.1" placeholder="Dn" style="flex:1" onchange="validarDn(this)">
-                <input type="number" step="0.1" placeholder="At" style="flex:1" id="at1">
-                <input type="number" step="0.1" placeholder="Ac" style="flex:1" onchange="validarAc(this, 'at1')">
-            </div>
-        </div>
-        <button type="button" class="btn" style="background:#607d8b; padding:8px;" onclick="agregarFilaArbol()">+ Añadir Árbol</button>
-    </div>
-
-    <div class="card">
-        <h3>III. Sanidad (Grado Cs)</h3>
-        <select id="sanidad_grado">
-            <option value="1">1 - Sano (No presente)</option>
-            <option value="2">2 - Poco (1-33%)</option>
-            <option value="3">3 - Moderado (33-66%)</option>
-            <option value="4">4 - Intenso (>66%)</option>
-        </select>
-    </div>
-
-    <button class="btn btn-save" onclick="guardarSitio()">GUARDAR EN DISPOSITIVO</button>
-    <button class="btn btn-sync" onclick="sincronizarSupabase()">SINCRONIZAR A LA NUBE</button>
-    <button class="btn btn-clear" onclick="resetFormulario()">NUEVO SITIO / LIMPIAR</button>
 </div>
 
+<!-- HEADER -->
+<div class="header">
+    <div class="header-content">
+        <h1><i class="fas fa-tree"></i> Inventario Forestal v2.0</h1>
+        <div class="header-subtitle">Jesús María Tosibuena - Sinaloa</div>
+        <div class="header-stats">
+            <div class="stat-card">
+                <div class="stat-value" id="totalSitios">0</div>
+                <div class="stat-label">Sitios Capturados</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="rodalesCompletos">0</div>
+                <div class="stat-label">Rodales Completos</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="pendientesSync">0</div>
+                <div class="stat-label">Pendientes Sync</div>
+            </div>
+        </div>
+    </div>
+</div>
 
+<!-- MAIN CONTAINER -->
+<div class="container">
+    
+    <!-- RODAL SELECTOR -->
+    <div class="rodal-selector">
+        <h2><i class="fas fa-map-marked-alt"></i> Identificación del Rodal</h2>
+        <div class="form-grid">
+            <div class="input-group">
+                <label for="umafor">UMAFOR</label>
+                <input type="text" id="umafor" placeholder="Ej: 1002">
+            </div>
+            <div class="input-group">
+                <label for="predio">Predio</label>
+                <input type="text" id="predio" placeholder="Nombre del predio" value="Jesús María Tosibuena">
+            </div>
+            <div class="input-group">
+                <label for="unidad_manejo">Unidad de Manejo</label>
+                <input type="text" id="unidad_manejo" placeholder="Unidad">
+            </div>
+            <div class="input-group">
+                <label for="num_sitio"><i class="fas fa-hashtag"></i> Número de Sitio *</label>
+                <input type="number" id="num_sitio" placeholder="Número según diseño" required>
+            </div>
+        </div>
+        <div class="status-badge status-pending" id="statusRodal">
+            <i class="fas fa-info-circle"></i>
+            <span>Ingrese el número de sitio para comenzar</span>
+        </div>
+        <div style="text-align: center; margin-top: 1rem; font-size: 0.875rem; color: var(--text-secondary);">
+            <i class="fas fa-database"></i> Sitios en este dispositivo: <strong id="contadorSitiosLocal">0</strong>
+        </div>
+    </div>
+
+    <!-- TABS NAVIGATION -->
+    <div class="tabs">
+        <div class="tab-buttons">
+            <button class="tab-btn active" data-tab="tab1">
+                <i class="fas fa-info-circle"></i>
+                <span>Control</span>
+                <small class="tab-progress" id="progress1">0%</small>
+            </button>
+            <button class="tab-btn" data-tab="tab2">
+                <i class="fas fa-tree"></i>
+                <span>Arbolado</span>
+                <small class="tab-progress" id="progress2">0%</small>
+            </button>
+            <button class="tab-btn" data-tab="tab3">
+                <i class="fas fa-chart-line"></i>
+                <span>Estructura</span>
+                <small class="tab-progress" id="progress3">0%</small>
+            </button>
+            <button class="tab-btn" data-tab="tab4">
+                <i class="fas fa-seedling"></i>
+                <span>Regeneración</span>
+                <small class="tab-progress" id="progress4">0%</small>
+            </button>
+            <button class="tab-btn" data-tab="tab5">
+                <i class="fas fa-fire"></i>
+                <span>Combustibles</span>
+                <small class="tab-progress" id="progress5">0%</small>
+            </button>
+            <button class="tab-btn" data-tab="tab6">
+                <i class="fas fa-camera"></i>
+                <span>Fotografías</span>
+                <small class="tab-progress" id="progress6">0%</small>
+            </button>
+        </div>
+
+        <!-- TAB 1: INFORMACIÓN DE CONTROL -->
+        <div class="tab-content active" id="tab1">
+            <!-- GPS -->
+            <div class="section">
+                <div class="section-header">
+                    <div class="section-icon"><i class="fas fa-satellite-dish"></i></div>
+                    <h3>Localización GPS</h3>
+                </div>
+                <div class="gps-panel">
+                    <div class="gps-grid">
+                        <div class="gps-item">
+                            <div class="gps-label">Latitud (WGS84)</div>
+                            <div class="gps-value" id="lat">--</div>
+                        </div>
+                        <div class="gps-item">
+                            <div class="gps-label">Longitud (WGS84)</div>
+                            <div class="gps-value" id="lon">--</div>
+                        </div>
+                        <div class="gps-item">
+                            <div class="gps-label">UTM X (Zona 13N)</div>
+                            <div class="gps-value" id="utm_x">--</div>
+                        </div>
+                        <div class="gps-item">
+                            <div class="gps-label">UTM Y (Zona 13N)</div>
+                            <div class="gps-value" id="utm_y">--</div>
+                        </div>
+                        <div class="gps-item">
+                            <div class="gps-label">Altitud (MSNM)</div>
+                            <div class="gps-value" id="alt">--</div>
+                        </div>
+                        <div class="gps-item">
+                            <div class="gps-label">Precisión (metros)</div>
+                            <div class="gps-value" id="acc">--</div>
+                        </div>
+                    </div>
+                    <div class="gps-accuracy" id="gpsAccuracyStatus">
+                        <i class="fas fa-spinner fa-pulse"></i> Esperando señal GPS...
+                    </div>
+                </div>
+                <div id="map"></div>
+            </div>
+
+            <!-- INFORMACIÓN ECOLÓGICA -->
+            <div class="section">
+                <div class="section-header">
+                    <div class="section-icon"><i class="fas fa-leaf"></i></div>
+                    <h3>Información Ecológica y Silvícola</h3>
+                </div>
+                <div class="form-grid form-grid-2">
+                    <div class="input-group">
+                        <label for="fecha">Fecha</label>
+                        <input type="date" id="fecha" required>
+                    </div>
+                    <div class="input-group">
+                        <label for="brigada">Brigada</label>
+                        <input type="text" id="brigada" placeholder="Nombre o número">
+                    </div>
+                    <div class="input-group">
+                        <label for="paraje">Paraje</label>
+                        <input type="text" id="paraje" placeholder="Nombre del paraje">
+                    </div>
+                    <div class="input-group">
+                        <label for="tamanio">Tamaño (m²)</label>
+                        <input type="number" id="tamanio" placeholder="400" value="400">
+                    </div>
+                    <div class="input-group">
+                        <label for="datum">DATUM</label>
+                        <select id="datum">
+                            <option value="WGS84" selected>WGS84</option>
+                            <option value="NAD27">NAD27</option>
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <label for="pendiente">Pendiente (%)</label>
+                        <input type="number" id="pendiente" placeholder="0-100" min="0" max="100">
+                    </div>
+                    <div class="input-group">
+                        <label for="exposicion">Exposición (Cat. 16)</label>
+                        <select id="exposicion"></select>
+                    </div>
+                    <div class="input-group">
+                        <label for="compactacion">Compactación (Cat. 17)</label>
+                        <select id="compactacion"></select>
+                    </div>
+                    <div class="input-group">
+                        <label for="textura">Textura (Cat. 18)</label>
+                        <select id="textura"></select>
+                    </div>
+                    <div class="input-group">
+                        <label for="material_pred">Material Predominante (Cat. 19)</label>
+                        <select id="material_pred"></select>
+                    </div>
+                    <div class="input-group">
+                        <label for="materia_organica">Materia Orgánica (cm)</label>
+                        <input type="number" step="0.1" id="materia_organica" placeholder="MO">
+                    </div>
+                    <div class="input-group">
+                        <label for="otra_capa">Otra Capa (cm)</label>
+                        <input type="number" step="0.1" id="otra_capa" placeholder="OC">
+                    </div>
+                </div>
+            </div>
+
+            <!-- USO Y EROSIÓN -->
+            <div class="section">
+                <div class="section-header">
+                    <div class="section-icon"><i class="fas fa-layer-group"></i></div>
+                    <h3>Uso del Suelo y Erosión</h3>
+                </div>
+                <div class="form-grid form-grid-2">
+                    <div class="input-group">
+                        <label for="uso_actual">Uso Actual (Cat. 22)</label>
+                        <select id="uso_actual"></select>
+                    </div>
+                    <div class="input-group">
+                        <label for="uso_agricola">Uso Agrícola (Cat. 23)</label>
+                        <select id="uso_agricola">
+                            <option value="">Sin uso</option>
+                            <option value="1">No presente</option>
+                            <option value="2">Poco</option>
+                            <option value="3">Moderado</option>
+                            <option value="4">Intenso</option>
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <label for="uso_pecuario">Uso Pecuario (Cat. 24)</label>
+                        <select id="uso_pecuario">
+                            <option value="">Sin uso</option>
+                            <option value="1">No presente</option>
+                            <option value="2">Poco</option>
+                            <option value="3">Moderado</option>
+                            <option value="4">Intenso</option>
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <label for="elementos">Elementos (Cat. 25)</label>
+                        <input type="text" id="elementos" placeholder="Elementos presentes">
+                    </div>
+                    <div class="input-group">
+                        <label for="erosion_laminar">Erosión Laminar (Cat. 25)</label>
+                        <select id="erosion_laminar"></select>
+                    </div>
+                    <div class="input-group">
+                        <label for="erosion_canalillos">Erosión Canalillos (Cat. 26)</label>
+                        <select id="erosion_canalillos"></select>
+                    </div>
+                    <div class="input-group">
+                        <label for="erosion_carcavas">Erosión Cárcavas (Cat. 27)</label>
+                        <select id="erosion_carcavas"></select>
+                    </div>
+                    <div class="input-group">
+                        <label for="erosion_antropogenica">Erosión Antropogénica (Cat. 28)</label>
+                        <select id="erosion_antropogenica"></select>
+                    </div>
+                    <div class="input-group">
+                        <label for="accesibilidad">Accesibilidad (Cat. 29)</label>
+                        <select id="accesibilidad">
+                            <option value="">Seleccione...</option>
+                            <option value="1">Buena</option>
+                            <option value="2">Regular</option>
+                            <option value="3">Mala</option>
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <label for="perturbaciones">Perturbaciones (Cat. 30)</label>
+                        <select id="perturbaciones"></select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- COBERTURAS Y TRATAMIENTOS -->
+            <div class="section">
+                <div class="section-header">
+                    <div class="section-icon"><i class="fas fa-percentage"></i></div>
+                    <h3>Coberturas y Tratamientos</h3>
+                </div>
+                <div class="form-grid form-grid-2">
+                    <div class="input-group">
+                        <label for="cobertura_arborea">Cobertura Arbórea (%)</label>
+                        <input type="number" id="cobertura_arborea" placeholder="CA" min="0" max="100">
+                    </div>
+                    <div class="input-group">
+                        <label for="cobertura_herbaceas">Cobertura Herbáceas (%)</label>
+                        <input type="number" id="cobertura_herbaceas" placeholder="CH" min="0" max="100">
+                    </div>
+                    <div class="input-group">
+                        <label for="cobertura_pastizal">Cobertura Pastizal (%)</label>
+                        <input type="number" id="cobertura_pastizal" placeholder="CP" min="0" max="100">
+                    </div>
+                    <div class="input-group">
+                        <label for="cobertura_otra">Otra Cobertura (%)</label>
+                        <input type="number" id="cobertura_otra" placeholder="COC" min="0" max="100">
+                    </div>
+                    <div class="input-group">
+                        <label for="tratamiento_silvicola">Tratamiento Silvícola (Cat. 35)</label>
+                        <select id="tratamiento_silvicola"></select>
+                    </div>
+                    <div class="input-group">
+                        <label for="tratamiento_complementario">Tratamiento Complementario (Cat. 36)</label>
+                        <select id="tratamiento_complementario"></select>
+                    </div>
+                </div>
+                <div class="input-group">
+                    <label for="observaciones">Observaciones (Cat. 37)</label>
+                    <textarea id="observaciones" rows="3" placeholder="Observaciones generales del sitio..."></textarea>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 2: ARBOLADO COMERCIAL -->
+        <div class="tab-content" id="tab2">
+            <div class="section">
+                <div class="section-header">
+                    <div class="section-icon"><i class="fas fa-tree"></i></div>
+                    <h3>Arbolado Comercial (Dn ≥ 7.5 cm)</h3>
+                </div>
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle"></i>
+                    <div>
+                        <strong>Instrucciones:</strong> Capture todos los árboles con diámetro normal ≥ 7.5 cm.
+                        Valide que Ac (Altura de copa) sea menor que At (Altura total).
+                    </div>
+                </div>
+                
+                <div class="arbol-container">
+                    <div class="arbol-table" id="arboladoTable">
+                        <div class="arbol-row arbol-header">
+                            <div>#</div>
+                            <div>Especie</div>
+                            <div>Do</div>
+                            <div>Dn (cm)</div>
+                            <div>At (m)</div>
+                            <div>Ac (m)</div>
+                            <div></div>
+                        </div>
+                        <!-- Filas dinámicas -->
+                    </div>
+                </div>
+                
+                <button class="btn btn-add" onclick="agregarArbol()">
+                    <i class="fas fa-plus-circle"></i> Añadir Árbol
+                </button>
+                
+                <div style="margin-top: 1rem; text-align: center; color: var(--text-secondary);">
+                    Total de árboles capturados: <strong id="totalArboles">0</strong> / 144
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 3: ESTRUCTURA FORESTAL -->
+        <div class="tab-content" id="tab3">
+            <div class="section">
+                <div class="section-header">
+                    <div class="section-icon"><i class="fas fa-chart-network"></i></div>
+                    <h3>Estructura Forestal y Daños (5 Árboles)</h3>
+                </div>
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle"></i>
+                    <div>
+                        <strong>Metodología:</strong> Árbol 1 = centro del sitio. Árboles 2-5 = vecinos más cercanos.
+                        Medir distancia, azimut, daños físicos y sanidad.
+                    </div>
+                </div>
+                <div id="estructuraContainer"></div>
+            </div>
+
+            <!-- INFORMACIÓN DE INCREMENTO -->
+            <div class="section">
+                <div class="section-header">
+                    <div class="section-icon"><i class="fas fa-rings"></i></div>
+                    <h3>Información de Incremento (3 Virutas)</h3>
+                </div>
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle"></i>
+                    <div>
+                        <strong>Muestreo:</strong> Obtener mínimo 3 virutas (dominante, intermedio, suprimido).
+                        Registrar 10 radios de crecimiento por viruta.
+                    </div>
+                </div>
+                <div id="incrementoContainer"></div>
+            </div>
+        </div>
+
+        <!-- TAB 4: REGENERACIÓN -->
+        <div class="tab-content" id="tab4">
+            <div class="section">
+                <div class="section-header">
+                    <div class="section-icon"><i class="fas fa-seedling"></i></div>
+                    <h3>Regeneración Natural (9 m²)</h3>
+                </div>
+                <div class="form-grid form-grid-2">
+                    <div class="input-group">
+                        <label for="regen_tamanio">Tamaño (m²)</label>
+                        <input type="number" id="regen_tamanio" value="9" readonly>
+                    </div>
+                    <div class="input-group">
+                        <label for="regen_distribucion">Distribución</label>
+                        <select id="regen_distribucion">
+                            <option value="">Seleccione...</option>
+                            <option value="1">Uniforme</option>
+                            <option value="2">Aleatoria</option>
+                            <option value="3">Manchones</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <h4 style="margin-top: 2rem; color: var(--forest-primary);">Clases de Altura</h4>
+                <div id="regeneracionTable"></div>
+            </div>
+        </div>
+
+        <!-- TAB 5: COMBUSTIBLES -->
+        <div class="tab-content" id="tab5">
+            <div class="section">
+                <div class="section-header">
+                    <div class="section-icon"><i class="fas fa-fire"></i></div>
+                    <h3>Combustibles Forestales</h3>
+                </div>
+                
+                <!-- Hojarasca y vegetación -->
+                <h4 style="color: var(--forest-primary); margin-bottom: 1rem;">Hojarasca y Vegetación</h4>
+                <div class="form-grid form-grid-2">
+                    <div class="input-group">
+                        <label for="combustible_pendiente">Pendiente (%)</label>
+                        <input type="number" id="combustible_pendiente" placeholder="0-100">
+                    </div>
+                    <div class="input-group">
+                        <label for="espesor_hojarasca">Espesor Hojarasca (cm)</label>
+                        <input type="number" step="0.1" id="espesor_hojarasca" placeholder="cm">
+                    </div>
+                    <div class="input-group">
+                        <label for="altura_arbustos">Altura Arbustos (m)</label>
+                        <input type="number" step="0.1" id="altura_arbustos" placeholder="metros">
+                    </div>
+                    <div class="input-group">
+                        <label for="altura_pastos">Altura Pastos (m)</label>
+                        <input type="number" step="0.1" id="altura_pastos" placeholder="metros">
+                    </div>
+                    <div class="input-group">
+                        <label for="altura_hierbas">Altura Hierbas (m)</label>
+                        <input type="number" step="0.1" id="altura_hierbas" placeholder="metros">
+                    </div>
+                    <div class="input-group">
+                        <label for="cobertura_dosel">Cobertura del Dosel</label>
+                        <select id="cobertura_dosel">
+                            <option value="">Seleccione...</option>
+                            <option value="1">Ausencia</option>
+                            <option value="2">Presencia</option>
+                        </select>
+                    </div>
+                </div>
+
+                <h4 style="color: var(--forest-primary); margin: 2rem 0 1rem;">Combustibles Leñosos Caídos</h4>
+                <div id="combustiblesLenososContainer"></div>
+            </div>
+        </div>
+
+        <!-- TAB 6: FOTOGRAFÍAS -->
+        <div class="tab-content" id="tab6">
+            <div class="section">
+                <div class="section-header">
+                    <div class="section-icon"><i class="fas fa-camera"></i></div>
+                    <h3>Fotografías de Campo</h3>
+                </div>
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle"></i>
+                    <div>
+                        <strong>Instrucciones:</strong> Capture una fotografía en cada punto cardinal desde el centro del sitio.
+                        Las fotos deben mostrar la vegetación y características del rodal.
+                    </div>
+                </div>
+                
+                <div class="photo-grid">
+                    <div class="photo-card" onclick="capturarFoto('norte')">
+                        <div class="photo-label">
+                            <i class="fas fa-arrow-up"></i> NORTE
+                        </div>
+                        <div class="photo-icon"><i class="fas fa-camera"></i></div>
+                        <img class="photo-preview" id="preview_norte" alt="Norte">
+                        <div class="photo-instruction">Toque para capturar</div>
+                        <input type="file" id="foto_norte" accept="image/*" capture="environment" style="display:none" onchange="previsualizarFoto('norte', this)">
+                    </div>
+                    
+                    <div class="photo-card" onclick="capturarFoto('sur')">
+                        <div class="photo-label">
+                            <i class="fas fa-arrow-down"></i> SUR
+                        </div>
+                        <div class="photo-icon"><i class="fas fa-camera"></i></div>
+                        <img class="photo-preview" id="preview_sur" alt="Sur">
+                        <div class="photo-instruction">Toque para capturar</div>
+                        <input type="file" id="foto_sur" accept="image/*" capture="environment" style="display:none" onchange="previsualizarFoto('sur', this)">
+                    </div>
+                    
+                    <div class="photo-card" onclick="capturarFoto('este')">
+                        <div class="photo-label">
+                            <i class="fas fa-arrow-right"></i> ESTE
+                        </div>
+                        <div class="photo-icon"><i class="fas fa-camera"></i></div>
+                        <img class="photo-preview" id="preview_este" alt="Este">
+                        <div class="photo-instruction">Toque para capturar</div>
+                        <input type="file" id="foto_este" accept="image/*" capture="environment" style="display:none" onchange="previsualizarFoto('este', this)">
+                    </div>
+                    
+                    <div class="photo-card" onclick="capturarFoto('oeste')">
+                        <div class="photo-label">
+                            <i class="fas fa-arrow-left"></i> OESTE
+                        </div>
+                        <div class="photo-icon"><i class="fas fa-camera"></i></div>
+                        <img class="photo-preview" id="preview_oeste" alt="Oeste">
+                        <div class="photo-instruction">Toque para capturar</div>
+                        <input type="file" id="foto_oeste" accept="image/*" capture="environment" style="display:none" onchange="previsualizarFoto('oeste', this)">
+                    </div>
+                </div>
+                
+                <div style="margin-top: 1.5rem; text-align: center; color: var(--text-secondary);">
+                    <i class="fas fa-images"></i> Fotografías capturadas: <strong id="totalFotos">0</strong> / 4
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ACTION BUTTONS -->
+    <div class="btn-group">
+        <button class="btn btn-primary" onclick="guardarSitio()">
+            <i class="fas fa-save"></i> Guardar en Dispositivo
+        </button>
+        <button class="btn btn-secondary" onclick="sincronizarSupabase()">
+            <i class="fas fa-cloud-upload-alt"></i> Sincronizar
+        </button>
+    </div>
+    
+    <button class="btn btn-clear" onclick="resetFormulario()">
+        <i class="fas fa-redo"></i> Nuevo Sitio / Limpiar
+    </button>
+
+</div>
 
 <script>
-    // 1. CONFIGURACIÓN INICIAL
-    const wgs84 = "+proj=longlat +datum=WGS84 +no_defs";
-    const utm13N = "+proj=utm +zone=13 +datum=WGS84 +units=m +no_defs";
+// ========================================
+// CONFIGURACIÓN GLOBAL
+// ========================================
+const CONFIG = {
+    wgs84: "+proj=longlat +datum=WGS84 +no_defs",
+    utm13N: "+proj=utm +zone=13 +datum=WGS84 +units=m +no_defs",
+    supabaseUrl: 'https://xrgjbnelerhztobbciix.supabase.co',
+    supabaseKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhyZ2pibmVsZXJoenRvYmJjaWl4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg2NzQxMzQsImV4cCI6MjA4NDI1MDEzNH0.VSO0TCRzBFFV-W6nfzlQVHQ3AenbNyGAQ8RrhhBOhlk', // REEMPLAZAR CON TU KEY
+    sqlJsUrl: 'https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/'
+};
+
+let map, marker, capaRodales, watchId;
+let contadorArboles = 0;
+let sitesData = JSON.parse(localStorage.getItem('tosibuena_inventario_v2')) || {};
+let fotosCapturadas = {};
+
+// Supabase Client
+const _supabase = supabase.createClient(CONFIG.supabaseUrl, CONFIG.supabaseKey);
+
+// ========================================
+// CATÁLOGOS COMPLETOS
+// ========================================
+const CATALOGOS = {
+    especies: [
+        {id: 1, n: "Pinus cooperi"}, {id: 2, n: "Pinus durangensis"}, {id: 3, n: "Pinus arizonica"},
+        {id: 4, n: "Pinus leiophylla"}, {id: 5, n: "Pinus teocote"}, {id: 6, n: "Pinus engelmannii"},
+        {id: 7, n: "Pinus lumholtzii"}, {id: 8, n: "Pinus ayacahuite"}, {id: 9, n: "Pinus oocarpa"},
+        {id: 10, n: "Pinus douglasiana"}, {id: 11, n: "Pinus michoacana"}, {id: 12, n: "Pinus chihuahuana"},
+        {id: 13, n: "Pinus cembroides"}, {id: 14, n: "Pinus tenuifolia"}, {id: 15, n: "Pinus herrerae"},
+        {id: 16, n: "Pinus maximinoi"}, {id: 30, n: "Pinus spp"}, {id: 31, n: "Juniperus deppeana"},
+        {id: 32, n: "Juniperus flaccida"}, {id: 33, n: "Juniperus monticola"}, {id: 34, n: "Juniperus spp"},
+        {id: 35, n: "Cupressus spp"}, {id: 36, n: "Pseudotsuga spp"}, {id: 37, n: "Picea chihuahuana"},
+        {id: 38, n: "Abies durangensis"}, {id: 40, n: "Otras coníferas"},
+        {id: 41, n: "Quercus sideroxyla"}, {id: 42, n: "Quercus durifolia"}, {id: 43, n: "Quercus obtusata"},
+        {id: 44, n: "Quercus coccolobifolia"}, {id: 45, n: "Quercus laeta"}, {id: 46, n: "Quercus grisea"},
+        {id: 47, n: "Quercus eduardii"}, {id: 48, n: "Quercus urbanii"}, {id: 49, n: "Quercus gentryi"},
+        {id: 50, n: "Quercus resinosa"}, {id: 51, n: "Quercus crassifolia"}, {id: 52, n: "Quercus chihuahuensis"},
+        {id: 53, n: "Quercus viminea"}, {id: 54, n: "Quercus depressipes"}, {id: 55, n: "Quercus emoryi"},
+        {id: 56, n: "Quercus salicifolia"}, {id: 57, n: "Quercus castanea"}, {id: 58, n: "Quercus aristata"},
+        {id: 59, n: "Quercus magnoliifolia"}, {id: 60, n: "Quercus arizonica"}, {id: 61, n: "Quercus fulva"},
+        {id: 62, n: "Quercus radiata"}, {id: 63, n: "Quercus candicans"}, {id: 64, n: "Quercus scytophylla"},
+        {id: 65, n: "Quercus splendens"}, {id: 66, n: "Quercus rugosa"}, {id: 67, n: "Quercus subspathulata"},
+        {id: 68, n: "Quercus tarahumara"}, {id: 69, n: "Quercus mcvaughii"}, {id: 70, n: "Quercus conzattii"},
+        {id: 71, n: "Quercus acutifolia"}, {id: 72, n: "Quercus aff. Pulchella"}, {id: 73, n: "Quercus deserticola"},
+        {id: 74, n: "Quercus frutex"}, {id: 75, n: "Quercus gambelii"}, {id: 76, n: "Quercus hypoleuca"},
+        {id: 77, n: "Quercus hypoleucoides"}, {id: 78, n: "Quercus incarnata"}, {id: 79, n: "Quercus mexicana"},
+        {id: 80, n: "Quercus oblongifolia"}, {id: 81, n: "Quercus Omissa"}, {id: 82, n: "Quercus saltillensis"},
+        {id: 83, n: "Quercus tinkhamii"}, {id: 100, n: "Quercus spp"}, {id: 101, n: "Alnus firmifolia"},
+        {id: 102, n: "Alnus jorullensis"}, {id: 103, n: "Alnus acuminata"}, {id: 104, n: "Alnus spp"},
+        {id: 105, n: "Arbutus xalapensis"}, {id: 106, n: "Arbutus spp"}, {id: 107, n: "Guazuma ulmifolia"},
+        {id: 108, n: "Prunus serotina"}, {id: 109, n: "Fraxinus spp"}, {id: 110, n: "Populus tremuloides"},
+        {id: 111, n: "Cedrela odorata"}, {id: 112, n: "Otras hojosas"}
+    ],
+    exposicion: [
+        {id: 1, n: "Zenital (Z)"}, {id: 2, n: "Norte (N)"}, {id: 3, n: "Noreste (NE)"},
+        {id: 4, n: "Este (E)"}, {id: 5, n: "Sureste (SE)"}, {id: 6, n: "Sur (S)"},
+        {id: 7, n: "Suroeste (SO)"}, {id: 8, n: "Oeste (O)"}, {id: 9, n: "Noroeste (NO)"}
+    ],
+    compactacion: [
+        {id: 1, n: "Alta"}, {id: 2, n: "Media"}, {id: 3, n: "Baja"}
+    ],
+    textura: [
+        {id: 1, n: "Limosa"}, {id: 2, n: "Arenosa"}, {id: 3, n: "Arcillosa"},
+        {id: 4, n: "Limo-arenosa"}, {id: 5, n: "Limo-arcillosa"}, {id: 6, n: "Areno-limosa"},
+        {id: 7, n: "Areno-arcillosa"}, {id: 8, n: "Arcillo-limosa"}, {id: 9, n: "Arcillo-arenosa"},
+        {id: 10, n: "Franco"}, {id: 11, n: "Franco-limosa"}, {id: 12, n: "Franco-arenosa"},
+        {id: 13, n: "Franco-arcillosa"}
+    ],
+    materialPred: [
+        {id: 1, n: "Suelo"}, {id: 2, n: "Arena"}, {id: 3, n: "Grava (cascajo)"},
+        {id: 4, n: "Piedra"}, {id: 5, n: "Roquerío"}, {id: 6, n: "Laja"}
+    ],
+    usoActual: [
+        {id: 1, n: "Forestal en producción maderable"}, {id: 2, n: "Forestal en Protección"},
+        {id: 3, n: "Franjas de cauces y cuerpos de agua"}, {id: 4, n: "Franjas en vías de comunicación"},
+        {id: 5, n: "Fauna silvestre"}, {id: 6, n: "Vegetación"}, {id: 7, n: "Recreación"},
+        {id: 8, n: "Suelo"}, {id: 9, n: "Bajas existencias maderables"}, {id: 10, n: "Forestal Inaccesible"},
+        {id: 11, n: "Agricultura y fruticultura"}, {id: 12, n: "Pastizal"}, {id: 13, n: "Minería"},
+        {id: 14, n: "Vías de comunicación"}, {id: 15, n: "Roquerío"}, {id: 16, n: "Suelos con erosión crítica"},
+        {id: 17, n: "Asentamientos humanos"}, {id: 18, n: "Asentamientos industriales"},
+        {id: 19, n: "Áreas de investigación"}
+    ],
+    erosion: [
+        {id: 1, n: "No presente"}, {id: 2, n: "1-10% del sitio"}, {id: 3, n: "11-20% del sitio"},
+        {id: 4, n: "21-30% del sitio"}, {id: 5, n: "31-40% del sitio"}, {id: 6, n: "41-50% del sitio"},
+        {id: 7, n: "51-60% del sitio"}, {id: 8, n: "61-70% del sitio"}, {id: 9, n: "Más de 70% del sitio"}
+    ],
+    perturbaciones: [
+        {id: 1, n: "Sin perturbación"}, {id: 2, n: "Hongos y enfermedades"}, {id: 3, n: "Plagas"},
+        {id: 4, n: "Clandestinaje"}, {id: 5, n: "Cinchamiento"}, {id: 6, n: "Resinación"},
+        {id: 7, n: "Incendios"}, {id: 8, n: "Pastoreo"}, {id: 9, n: "Ocoteo"},
+        {id: 10, n: "Plantas parásitas"}, {id: 11, n: "Lianas o bejucos"}, {id: 12, n: "Roedores"},
+        {id: 13, n: "Rayos"}, {id: 14, n: "Viento"}, {id: 15, n: "Otras (especificar en observaciones)"}
+    ],
+    tratamientoSilvicola: [
+        {id: 1, n: "No corta (segregación total)"}, {id: 2, n: "Corta de selección"},
+        {id: 3, n: "Corta de regeneración"}, {id: 4, n: "Corta de liberación con pre-aclareo"},
+        {id: 5, n: "Primer aclareo"}, {id: 6, n: "Segundo aclareo"}, {id: 7, n: "Tercer aclareo"},
+        {id: 8, n: "Cuarto aclareo"}, {id: 9, n: "Matarrasa con plantación inmediata"},
+        {id: 10, n: "Corta de protección"}
+    ],
+    tratamientoComplementario: [
+        {id: 1, n: "Quema controlada o reducción de materiales combustibles"},
+        {id: 2, n: "Desbroza o chaponeo"}, {id: 3, n: "Acordonamiento de material vegetal"},
+        {id: 4, n: "Reducción de la densidad de la regeneración"}, {id: 5, n: "Reforestación"},
+        {id: 6, n: "Plantación con siembra directa"}, {id: 7, n: "Limpieza de la regeneración o plantación"},
+        {id: 8, n: "Restauración de suelos"}, {id: 9, n: "Cortas de saneamiento"},
+        {id: 10, n: "Obras de control de azolves"}, {id: 11, n: "Brecha cortafuego"},
+        {id: 12, n: "Cercado"}, {id: 13, n: "Podas"}
+    ],
+    dominancia: [
+        {id: 1, n: "Dominante-Codominante"}, {id: 2, n: "Intermedio"}, {id: 3, n: "Suprimido"},
+        {id: 4, n: "Libre sin efecto de supresión"}, {id: 5, n: "Libre con efecto de supresión"},
+        {id: 6, n: "Aislado con el piso alto"}, {id: 7, n: "Muerto en pie"},
+        {id: 8, n: "Muerto caído"}, {id: 9, n: "Tocón"}
+    ],
+    danioFisico: [
+        {id: 1, n: "Sin Daño"}, {id: 2, n: "Vieja, resinado, ocoteado, lacrado chicleado"},
+        {id: 3, n: "Fuste nudoso, ramudo o abultado"}, {id: 4, n: "Ladeado, chueco o torcido"},
+        {id: 5, n: "Fuste descortezado o rayado"}, {id: 6, n: "Puntiseco o despuntado"},
+        {id: 7, n: "Cinchado"}, {id: 8, n: "Fuste ovoide o cuadrilongo"}, {id: 9, n: "Daño por cable"},
+        {id: 10, n: "Bifurcado o polibifurcado"}, {id: 11, n: "Lianas o bejucos"}
+    ],
+    ubicacionDanio: [
+        {id: 1, n: "Sin Daño"}, {id: 2, n: "Daño en la punta"}, {id: 3, n: "Daño en la parte media"},
+        {id: 4, n: "Daño en la base"}, {id: 5, n: "Daño en la punta y en la parte media"},
+        {id: 6, n: "Daño en la punta y en la base"}, {id: 7, n: "Daño en la parte media y en la base"},
+        {id: 8, n: "Daño en la punta, en la parte media y en la base"}
+    ],
+    sanidad: [
+        {id: 1, n: "No presente"}, {id: 2, n: "Poco (1-33%)"}, {id: 3, n: "Moderado (33-66%)"},
+        {id: 4, n: "Intenso (>66%)"}
+    ]
+};
+
+// ========================================
+// INICIALIZACIÓN
+// ========================================
+window.onload = () => {
+    inicializarMapa();
+    poblarCatalogos();
+    iniciarGPS();
+    actualizarEstadisticas();
+    inicializarEstructuraForestal();
+    inicializarIncremento();
+    inicializarRegeneracion();
+    inicializarCombustibles();
+    document.getElementById('fecha').valueAsDate = new Date();
+};
+
+// ========================================
+// MAPA Y GPS
+// ========================================
+function inicializarMapa() {
+    map = L.map('map').setView([25.8, -108.0], 14);
     
-    // Supabase
-    const supabaseUrl = 'https://xrgjbnelerhztobbciix.supabase.co';
-    const supabaseKey = 'TU_KEY_REAL_AQUI'; 
-    const _supabase = supabase.createClient(supabaseUrl, supabaseKey);
+    // Capa base online
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap',
+        opacity: 0.6
+    }).addTo(map);
 
-    var map, marker, capaRodales;
+    // Marcador GPS
+    marker = L.marker([25.8, -108.0], {
+        icon: L.divIcon({
+            className: 'gps-marker',
+            html: '<div style="background:#ff0000;width:20px;height:20px;border-radius:50%;border:3px solid white;box-shadow:0 0 10px rgba(0,0,0,0.5);"></div>',
+            iconSize: [20, 20]
+        })
+    }).addTo(map);
 
-    const CATALOGOS = {
-        especies: [
-            {id: 1, n: "Pinus cooperi"}, {id: 2, n: "Pinus durangensis"}, {id: 3, n: "Pinus arizonica"},
-            {id: 4, n: "Pinus engelmannii"}, {id: 82, n: "Quercus sideroxyla"}, {id: 112, n: "Otras hojosas"}
-        ],
-        exposicion: [
-            {id: 1, n: "Zenital (Z)"}, {id: 2, n: "Norte (N)"}, {id: 3, n: "Noreste (NE)"},
-            {id: 4, n: "Este (E)"}, {id: 5, n: "Sur (S)"}, {id: 9, n: "Noroeste (NO)"}
-        ],
-        uas: [
-            {id: 1, n: "Forestal producción maderable"}, {id: 2, n: "Forestal Protección"}, {id: 17, n: "Asentamientos"}
-        ]
+    // Intentar cargar mapa offline MBTiles
+    cargarMapaOffline();
+}
+
+function cargarMapaOffline() {
+    const sqlConfig = { locateFile: f => CONFIG.sqlJsUrl + f };
+    
+    initSqlJs(sqlConfig).then(SQL => {
+        capaRodales = L.tileLayer.mbTiles('mapa_rodales.mbtiles', {
+            minZoom: 12,
+            maxZoom: 18,
+            attribution: 'Comunidad J.M. Tosibuena'
+        }).addTo(map);
+        console.log("✅ Mapa offline MBTiles cargado");
+    }).catch(err => {
+        console.warn("⚠️ Mapa offline no disponible, usando solo capa online", err);
+    });
+}
+
+function iniciarGPS() {
+    if (!navigator.geolocation) {
+        mostrarAlerta('error', 'GPS no disponible en este dispositivo');
+        return;
+    }
+
+    const opciones = {
+        enableHighAccuracy: true,
+        timeout: 15000,
+        maximumAge: 0
     };
 
-    // 2. INICIALIZACIÓN DEL MAPA Y MOTOR
-    const configuracionSql = {
-        locateFile: filename => `https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.6.2/${filename}`
-    };
+    watchId = navigator.geolocation.watchPosition(
+        actualizarPosicionGPS,
+        errorGPS,
+        opciones
+    );
+}
 
-    // Inicializamos el mapa ANTES del motor offline para asegurar que el DOM esté listo
-    function initMapa() {
-        map = L.map('map').setView([25.8, -108.0], 14);
+function actualizarPosicionGPS(position) {
+    const { latitude, longitude, accuracy, altitude } = position.coords;
+    
+    // Actualizar interfaz GPS
+    document.getElementById('lat').textContent = latitude.toFixed(6);
+    document.getElementById('lon').textContent = longitude.toFixed(6);
+    document.getElementById('acc').textContent = accuracy.toFixed(1);
+    document.getElementById('alt').textContent = altitude ? altitude.toFixed(0) : '--';
+
+    // Conversión UTM
+    try {
+        const [x, y] = proj4(CONFIG.wgs84, CONFIG.utm13N, [longitude, latitude]);
+        document.getElementById('utm_x').textContent = x.toFixed(2);
+        document.getElementById('utm_y').textContent = y.toFixed(2);
+    } catch(e) {
+        console.error("Error conversión UTM:", e);
+    }
+
+    // Actualizar mapa
+    const pos = [latitude, longitude];
+    marker.setLatLng(pos);
+    if (accuracy < 25) map.panTo(pos);
+
+    // Status de precisión
+    const statusEl = document.getElementById('gpsAccuracyStatus');
+    if (accuracy < 5) {
+        statusEl.innerHTML = '<i class="fas fa-check-circle"></i> Precisión EXCELENTE';
+        statusEl.className = 'gps-accuracy accuracy-excellent';
+    } else if (accuracy < 15) {
+        statusEl.innerHTML = '<i class="fas fa-check"></i> Precisión BUENA';
+        statusEl.className = 'gps-accuracy accuracy-good';
+    } else {
+        statusEl.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Precisión REGULAR - Busque cielo abierto';
+        statusEl.className = 'gps-accuracy accuracy-poor';
+    }
+}
+
+function errorGPS(error) {
+    const statusEl = document.getElementById('gpsAccuracyStatus');
+    let mensaje = 'Error GPS: ';
+    
+    switch(error.code) {
+        case error.PERMISSION_DENIED:
+            mensaje += 'Permiso denegado. Active el GPS en configuración.';
+            break;
+        case error.POSITION_UNAVAILABLE:
+            mensaje += 'Posición no disponible. Busque cielo abierto.';
+            break;
+        case error.TIMEOUT:
+            mensaje += 'Tiempo agotado. Reintentando...';
+            break;
+        default:
+            mensaje += 'Error desconocido.';
+    }
+    
+    statusEl.innerHTML = `<i class="fas fa-times-circle"></i> ${mensaje}`;
+    statusEl.className = 'gps-accuracy accuracy-poor';
+    console.error('Error GPS:', error);
+}
+
+// ========================================
+// POBLAR CATÁLOGOS
+// ========================================
+function poblarCatalogos() {
+    poblarSelect('exposicion', CATALOGOS.exposicion);
+    poblarSelect('compactacion', CATALOGOS.compactacion);
+    poblarSelect('textura', CATALOGOS.textura);
+    poblarSelect('material_pred', CATALOGOS.materialPred);
+    poblarSelect('uso_actual', CATALOGOS.usoActual);
+    poblarSelect('erosion_laminar', CATALOGOS.erosion);
+    poblarSelect('erosion_canalillos', CATALOGOS.erosion);
+    poblarSelect('erosion_carcavas', CATALOGOS.erosion);
+    poblarSelect('erosion_antropogenica', CATALOGOS.erosion);
+    poblarSelect('perturbaciones', CATALOGOS.perturbaciones);
+    poblarSelect('tratamiento_silvicola', CATALOGOS.tratamientoSilvicola);
+    poblarSelect('tratamiento_complementario', CATALOGOS.tratamientoComplementario);
+}
+
+function poblarSelect(id, catalogo) {
+    const select = document.getElementById(id);
+    if (!select) return;
+    
+    select.innerHTML = '<option value="">Seleccione...</option>';
+    catalogo.forEach(item => {
+        const opt = document.createElement('option');
+        opt.value = item.id;
+        opt.textContent = `${item.id} - ${item.n}`;
+        select.appendChild(opt);
+    });
+}
+
+// ========================================
+// TABS
+// ========================================
+document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        const targetTab = btn.getAttribute('data-tab');
         
-        // Capa online
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { opacity: 0.4 }).addTo(map);
+        // Actualizar botones
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        
+        // Actualizar contenido
+        document.querySelectorAll('.tab-content').forEach(tc => tc.classList.remove('active'));
+        document.getElementById(targetTab).classList.add('active');
+    });
+});
 
-        // Marcador del GPS (inicialmente invisible/centro)
-        marker = L.marker([0,0]).addTo(map);
+// ========================================
+// ARBOLADO COMERCIAL
+// ========================================
+function agregarArbol() {
+    contadorArboles++;
+    const table = document.getElementById('arboladoTable');
+    
+    const row = document.createElement('div');
+    row.className = 'arbol-row';
+    row.id = `arbol_${contadorArboles}`;
+    
+    row.innerHTML = `
+        <div class="arbol-number">${contadorArboles}</div>
+        <select id="esp_${contadorArboles}" onchange="calcularProgreso()">
+            <option value="">Seleccione especie...</option>
+            ${CATALOGOS.especies.map(e => `<option value="${e.id}">${e.id} - ${e.n}</option>`).join('')}
+        </select>
+        <select id="do_${contadorArboles}">
+            <option value="">Do</option>
+            ${CATALOGOS.dominancia.map(d => `<option value="${d.id}">${d.id}</option>`).join('')}
+        </select>
+        <input type="number" step="0.1" id="dn_${contadorArboles}" placeholder="Dn" 
+               onchange="validarDn(${contadorArboles})" oninput="calcularProgreso()">
+        <input type="number" step="0.1" id="at_${contadorArboles}" placeholder="At" oninput="calcularProgreso()">
+        <input type="number" step="0.1" id="ac_${contadorArboles}" placeholder="Ac" 
+               onchange="validarAc(${contadorArboles})" oninput="calcularProgreso()">
+        <button class="arbol-delete" onclick="eliminarArbol(${contadorArboles})" title="Eliminar">
+            <i class="fas fa-trash"></i>
+        </button>
+    `;
+    
+    table.appendChild(row);
+    actualizarTotalArboles();
+}
 
-        // Intentar cargar motor Offline
-        initSqlJs(configuracionSql).then(function(SQL){
-            capaRodales = L.tileLayer.mbTiles('mapa_rodales.mbtiles', {
-                minZoom: 12, maxZoom: 18, attribution: 'Comunidad J.M. Tosibuena'
-            }).addTo(map);
-            console.log("Motor MBTiles cargado.");
-        }).catch(err => console.warn("Modo online solamente, mbtiles no disponible.", err));
-
-        iniciarGPS();
+function eliminarArbol(num) {
+    if (confirm('¿Eliminar este árbol?')) {
+        document.getElementById(`arbol_${num}`).remove();
+        actualizarTotalArboles();
+        calcularProgreso();
     }
+}
 
-    // 3. LÓGICA GPS MEJORADA
-    function iniciarGPS() {
-        if (!navigator.geolocation) {
-            alert("El GPS no es compatible con este navegador.");
-            return;
-        }
-
-        const opcionesGPS = {
-            enableHighAccuracy: true,
-            timeout: 10000,
-            maximumAge: 0
-        };
-
-        navigator.geolocation.watchPosition(pos => {
-            const {latitude, longitude, accuracy, altitude} = pos.coords;
-            
-            // Actualizar Interfaz
-            document.getElementById('lat').innerText = latitude.toFixed(6);
-            document.getElementById('lon').innerText = longitude.toFixed(6);
-            document.getElementById('acc').innerText = accuracy.toFixed(0);
-            document.getElementById('alt').innerText = altitude ? altitude.toFixed(0) : '--';
-
-            // Conversión UTM
-            try {
-                const coordsUTM = proj4(wgs84, utm13N, [longitude, latitude]);
-                document.getElementById('utm_x').innerText = coordsUTM[0].toFixed(2);
-                document.getElementById('utm_y').innerText = coordsUTM[1].toFixed(2);
-            } catch(e) { console.error("Error en conversión UTM", e); }
-
-            // Actualizar Mapa
-            const currentPos = [latitude, longitude];
-            marker.setLatLng(currentPos);
-            
-            // Solo centrar si la precisión es aceptable (< 20m) para evitar saltos bruscos
-            if(accuracy < 20) {
-                map.panTo(currentPos);
-            }
-
-        }, err => {
-            console.warn("Error de GPS: ", err.message);
-            // Si el brigadista está en un sótano o sierra muy profunda, avisar
-            if(err.code === 3) alert("Tiempo de espera agotado para obtener GPS. Busque un claro.");
-        }, opcionesGPS);
+function validarDn(num) {
+    const input = document.getElementById(`dn_${num}`);
+    const value = parseFloat(input.value);
+    
+    if (value && value < 7.5) {
+        input.classList.add('input-error');
+        mostrarAlerta('warning', `Árbol ${num}: Dn debe ser ≥ 7.5 cm para arbolado comercial`);
+    } else {
+        input.classList.remove('input-error');
+        input.classList.add('input-success');
     }
+}
 
-    // 4. FUNCIONES DE APOYO Y CATÁLOGOS
-    function poblarSelects() {
-        const sEsp = document.getElementById('esp1');
-        CATALOGOS.especies.forEach(e => sEsp.options.add(new Option(`${e.id}-${e.n}`, e.id)));
-        CATALOGOS.exposicion.forEach(e => document.getElementById('exposicion').options.add(new Option(e.n, e.id)));
-        CATALOGOS.uas.forEach(e => document.getElementById('uso_actual').options.add(new Option(e.n, e.id)));
-        document.getElementById('fecha').valueAsDate = new Date();
+function validarAc(num) {
+    const at = parseFloat(document.getElementById(`at_${num}`).value);
+    const ac = parseFloat(document.getElementById(`ac_${num}`).value);
+    const inputAc = document.getElementById(`ac_${num}`);
+    
+    if (at && ac && ac >= at) {
+        inputAc.classList.add('input-error');
+        mostrarAlerta('error', `Árbol ${num}: Ac debe ser menor que At`);
+    } else {
+        inputAc.classList.remove('input-error');
+        inputAc.classList.add('input-success');
     }
+}
 
-    let contadorArboles = 1;
-    function agregarFilaArbol() {
-        contadorArboles++;
-        const lista = document.getElementById('lista-arboles');
+function actualizarTotalArboles() {
+    const total = document.querySelectorAll('.arbol-row:not(.arbol-header)').length;
+    document.getElementById('totalArboles').textContent = total;
+}
+
+// Inicializar con 5 árboles
+for(let i = 0; i < 5; i++) agregarArbol();
+
+// ========================================
+// ESTRUCTURA FORESTAL
+// ========================================
+function inicializarEstructuraForestal() {
+    const container = document.getElementById('estructuraContainer');
+    
+    for (let i = 1; i <= 5; i++) {
         const div = document.createElement('div');
-        div.className = 'fila-arbol';
-        div.style = "display: flex; gap: 5px; margin-bottom: 8px;";
-        const idAt = `at${contadorArboles}`;
+        div.className = 'arbol-container';
         div.innerHTML = `
-            <select id="esp${contadorArboles}" style="flex:2.5; font-size: 0.85rem;"><option value="">Especie</option></select>
-            <input type="number" step="0.1" placeholder="Dn" style="flex:1" onchange="validarDn(this)">
-            <input type="number" step="0.1" placeholder="At" style="flex:1" id="${idAt}">
-            <input type="number" step="0.1" placeholder="Ac" style="flex:1" onchange="validarAc(this, '${idAt}')">
+            <h4 style="color: var(--forest-primary); margin-bottom: 1rem;">
+                <i class="fas fa-circle" style="color: ${i===1 ? '#f44336' : '#4caf50'}"></i>
+                Árbol ${i} ${i===1 ? '(Centro del sitio)' : `(Vecino ${i-1})`}
+            </h4>
+            <div class="form-grid form-grid-2">
+                <div class="input-group">
+                    <label>Especie</label>
+                    <select id="est_esp_${i}">
+                        <option value="">Seleccione...</option>
+                        ${CATALOGOS.especies.map(e => `<option value="${e.id}">${e.id} - ${e.n}</option>`).join('')}
+                    </select>
+                </div>
+                <div class="input-group">
+                    <label>Dominancia</label>
+                    <select id="est_do_${i}">
+                        <option value="">Seleccione...</option>
+                        ${CATALOGOS.dominancia.map(d => `<option value="${d.id}">${d.n}</option>`).join('')}
+                    </select>
+                </div>
+                <div class="input-group">
+                    <label>Dn (cm)</label>
+                    <input type="number" step="0.1" id="est_dn_${i}">
+                </div>
+                <div class="input-group">
+                    <label>At (m)</label>
+                    <input type="number" step="0.1" id="est_at_${i}">
+                </div>
+                <div class="input-group">
+                    <label>Ac (m)</label>
+                    <input type="number" step="0.1" id="est_ac_${i}">
+                </div>
+                <div class="input-group">
+                    <label>DCNS (m)</label>
+                    <input type="number" step="0.1" id="est_dcns_${i}">
+                </div>
+                <div class="input-group">
+                    <label>DCEO (m)</label>
+                    <input type="number" step="0.1" id="est_dceo_${i}">
+                </div>
+                <div class="input-group">
+                    <label>Daño Físico 1</label>
+                    <select id="est_df1_${i}">
+                        <option value="">Seleccione...</option>
+                        ${CATALOGOS.danioFisico.map(d => `<option value="${d.id}">${d.n}</option>`).join('')}
+                    </select>
+                </div>
+                <div class="input-group">
+                    <label>Ubicación Daño 1</label>
+                    <select id="est_ub1_${i}">
+                        <option value="">Seleccione...</option>
+                        ${CATALOGOS.ubicacionDanio.map(u => `<option value="${u.id}">${u.n}</option>`).join('')}
+                    </select>
+                </div>
+                <div class="input-group">
+                    <label>Daño Físico 2</label>
+                    <select id="est_df2_${i}">
+                        <option value="">Seleccione...</option>
+                        ${CATALOGOS.danioFisico.map(d => `<option value="${d.id}">${d.n}</option>`).join('')}
+                    </select>
+                </div>
+                <div class="input-group">
+                    <label>Ubicación Daño 2</label>
+                    <select id="est_ub2_${i}">
+                        <option value="">Seleccione...</option>
+                        ${CATALOGOS.ubicacionDanio.map(u => `<option value="${u.id}">${u.n}</option>`).join('')}
+                    </select>
+                </div>
+                <div class="input-group">
+                    <label>Sanidad</label>
+                    <select id="est_sa_${i}">
+                        <option value="">Seleccione...</option>
+                        ${CATALOGOS.sanidad.map(s => `<option value="${s.id}">${s.n}</option>`).join('')}
+                    </select>
+                </div>
+                <div class="input-group">
+                    <label>Calificación Sanidad</label>
+                    <select id="est_cs_${i}">
+                        <option value="">Seleccione...</option>
+                        ${CATALOGOS.sanidad.map(s => `<option value="${s.id}">${s.n}</option>`).join('')}
+                    </select>
+                </div>
+                <div class="input-group">
+                    <label>Azimut (°)</label>
+                    <input type="number" id="est_azt_${i}" min="0" max="360">
+                </div>
+                <div class="input-group">
+                    <label>Distancia (m)</label>
+                    <input type="number" step="0.1" id="est_dist_${i}">
+                </div>
+            </div>
         `;
-        lista.appendChild(div);
-        const sel = document.getElementById(`esp${contadorArboles}`);
-        CATALOGOS.especies.forEach(e => sel.options.add(new Option(`${e.id}-${e.n}`, e.id)));
+        container.appendChild(div);
     }
+}
 
-    // Validaciones Dasométricas
-    function validarDn(el) { el.value < 7.5 ? el.classList.add('audit-error') : el.classList.remove('audit-error'); }
-    function validarAc(el, idAt) {
-        const atVal = parseFloat(document.getElementById(idAt).value);
-        if(!atVal) return;
-        (parseFloat(el.value) >= atVal) ? el.classList.add('audit-error') : el.classList.remove('audit-error');
+// ========================================
+// INCREMENTO (VIRUTAS)
+// ========================================
+function inicializarIncremento() {
+    const container = document.getElementById('incrementoContainer');
+    
+    for (let v = 1; v <= 3; v++) {
+        const div = document.createElement('div');
+        div.className = 'arbol-container';
+        div.innerHTML = `
+            <h4 style="color: var(--forest-primary); margin-bottom: 1rem;">
+                <i class="fas fa-vial"></i> Viruta ${v}
+            </h4>
+            <div class="form-grid form-grid-2">
+                <div class="input-group">
+                    <label>Especie</label>
+                    <select id="vir_esp_${v}">
+                        <option value="">Seleccione...</option>
+                        ${CATALOGOS.especies.map(e => `<option value="${e.id}">${e.id} - ${e.n}</option>`).join('')}
+                    </select>
+                </div>
+                <div class="input-group">
+                    <label>Dominancia</label>
+                    <select id="vir_do_${v}">
+                        <option value="">Seleccione...</option>
+                        ${CATALOGOS.dominancia.map(d => `<option value="${d.id}">${d.n}</option>`).join('')}
+                    </select>
+                </div>
+                <div class="input-group">
+                    <label>Dn (cm)</label>
+                    <input type="number" step="0.1" id="vir_dn_${v}">
+                </div>
+                <div class="input-group">
+                    <label>At (m)</label>
+                    <input type="number" step="0.1" id="vir_at_${v}">
+                </div>
+                <div class="input-group">
+                    <label>Edad (años)</label>
+                    <input type="number" id="vir_edad_${v}">
+                </div>
+                <div class="input-group">
+                    <label>NA</label>
+                    <input type="number" id="vir_na_${v}">
+                </div>
+                <div class="input-group">
+                    <label>TP</label>
+                    <input type="text" id="vir_tp_${v}">
+                </div>
+                <div class="input-group">
+                    <label>CE</label>
+                    <input type="text" id="vir_ce_${v}">
+                </div>
+            </div>
+            <h5 style="margin-top: 1rem; color: var(--text-secondary);">Radios de Crecimiento (mm)</h5>
+            <div class="form-grid" style="grid-template-columns: repeat(5, 1fr);">
+                ${Array.from({length: 10}, (_, i) => `
+                    <div class="input-group">
+                        <label>R${i+1}</label>
+                        <input type="number" step="0.01" id="vir_r${i+1}_${v}">
+                    </div>
+                `).join('')}
+            </div>
+        `;
+        container.appendChild(div);
     }
-    function validarPendiente(el) { (el.value < 0 || el.value > 100) ? el.classList.add('audit-error') : el.classList.remove('audit-error'); }
+}
 
-    // Persistencia Local
-    let sitesData = JSON.parse(localStorage.getItem('tosibuena_muestreo')) || {};
+// ========================================
+// REGENERACIÓN
+// ========================================
+function inicializarRegeneracion() {
+    const container = document.getElementById('regeneracionTable');
+    const especies = CATALOGOS.especies.slice(0, 20); // Principales especies
+    
+    let html = `
+        <div style="overflow-x: auto;">
+            <table style="width: 100%; border-collapse: collapse; margin-top: 1rem;">
+                <thead>
+                    <tr style="background: var(--forest-primary); color: white;">
+                        <th style="padding: 0.75rem; text-align: left;">Especie</th>
+                        <th colspan="3" style="padding: 0.75rem; text-align: center;">0.25-1.50 m</th>
+                        <th colspan="3" style="padding: 0.75rem; text-align: center;">1.51-2.75 m</th>
+                        <th colspan="3" style="padding: 0.75rem; text-align: center;">> 2.75 m</th>
+                    </tr>
+                    <tr style="background: var(--forest-secondary); color: white; font-size: 0.875rem;">
+                        <th style="padding: 0.5rem;"></th>
+                        <th style="padding: 0.5rem;">Frec</th>
+                        <th style="padding: 0.5rem;">EM</th>
+                        <th style="padding: 0.5rem;">DM</th>
+                        <th style="padding: 0.5rem;">Frec</th>
+                        <th style="padding: 0.5rem;">EM</th>
+                        <th style="padding: 0.5rem;">DM</th>
+                        <th style="padding: 0.5rem;">Frec</th>
+                        <th style="padding: 0.5rem;">EM</th>
+                        <th style="padding: 0.5rem;">DM</th>
+                    </tr>
+                </thead>
+                <tbody>
+    `;
+    
+    especies.forEach(esp => {
+        html += `
+            <tr style="border-bottom: 1px solid var(--border);">
+                <td style="padding: 0.5rem; font-weight: 600;">${esp.id} - ${esp.n}</td>
+                <td><input type="number" id="regen_${esp.id}_frec1" style="width: 60px; padding: 0.5rem;"></td>
+                <td><input type="number" id="regen_${esp.id}_em1" style="width: 60px; padding: 0.5rem;"></td>
+                <td><input type="number" id="regen_${esp.id}_dm1" style="width: 60px; padding: 0.5rem;"></td>
+                <td><input type="number" id="regen_${esp.id}_frec2" style="width: 60px; padding: 0.5rem;"></td>
+                <td><input type="number" id="regen_${esp.id}_em2" style="width: 60px; padding: 0.5rem;"></td>
+                <td><input type="number" id="regen_${esp.id}_dm2" style="width: 60px; padding: 0.5rem;"></td>
+                <td><input type="number" id="regen_${esp.id}_frec3" style="width: 60px; padding: 0.5rem;"></td>
+                <td><input type="number" id="regen_${esp.id}_em3" style="width: 60px; padding: 0.5rem;"></td>
+                <td><input type="number" id="regen_${esp.id}_dm3" style="width: 60px; padding: 0.5rem;"></td>
+            </tr>
+        `;
+    });
+    
+    html += `
+                </tbody>
+            </table>
+        </div>
+    `;
+    
+    container.innerHTML = html;
+}
 
-    function renderizarProgreso(rodalId) {
-        if(!rodalId) return;
-        const total = Object.values(sitesData).filter(s => s.rodal === rodalId).length;
-        document.getElementById('contador_sitios_rodal').innerText = total;
-        const status = document.getElementById('status_rodal');
-        if(total >= 2) {
-            status.innerText = "✅ RODAL CUMPLIDO"; status.style.background = "#c8e6c9"; status.style.color = "#2e7d32";
+// ========================================
+// COMBUSTIBLES
+// ========================================
+function inicializarCombustibles() {
+    const container = document.getElementById('combustiblesLenososContainer');
+    const categorias = [
+        { name: 'Finos', desc: '0-0.5 cm', distancias: ['3m', '6m', '9m'] },
+        { name: 'Regulares', desc: '0.51-2.5 cm', distancias: ['6m', '9m'] },
+        { name: 'Medianos', desc: '2.51-7.5 cm', distancias: ['6m', '9m'] },
+        { name: 'Gruesos', desc: '>7.5 cm (10 piezas)', distancias: ['Pieza 1-10'] }
+    ];
+    
+    let html = '';
+    categorias.forEach((cat, idx) => {
+        html += `
+            <div class="arbol-container">
+                <h5 style="color: var(--forest-primary);">${cat.name} (${cat.desc})</h5>
+                <div class="form-grid form-grid-2">
+        `;
+        
+        if (cat.name === 'Gruesos') {
+            for (let i = 1; i <= 10; i++) {
+                html += `
+                    <div class="input-group">
+                        <label>Pieza ${i} - Diámetro (cm)</label>
+                        <input type="number" step="0.1" id="comb_grueso_diam_${i}">
+                    </div>
+                    <div class="input-group">
+                        <label>Pieza ${i} - Grado Descomp.</label>
+                        <select id="comb_grueso_grad_${i}">
+                            <option value="">Seleccione...</option>
+                            <option value="1">1 - Corteza intacta</option>
+                            <option value="2">2 - Parte corteza perdida</option>
+                            <option value="3">3 - Mayor corteza perdida</option>
+                            <option value="4">4 - Albura podrida</option>
+                            <option value="5">5 - Contacto total con suelo</option>
+                        </select>
+                    </div>
+                `;
+            }
         } else {
-            status.innerText = "⚠️ MUESTREO PENDIENTE"; status.style.background = "#ffcdd2"; status.style.color = "#b71c1c";
+            cat.distancias.forEach(dist => {
+                html += `
+                    <div class="input-group">
+                        <label>${dist}</label>
+                        <input type="number" id="comb_${cat.name.toLowerCase()}_${dist.replace('m', '')}" placeholder="Conteo">
+                    </div>
+                `;
+            });
+        }
+        
+        html += `
+                </div>
+            </div>
+        `;
+    });
+    
+    container.innerHTML = html;
+}
+
+// ========================================
+// FOTOGRAFÍAS
+// ========================================
+function capturarFoto(direccion) {
+    document.getElementById(`foto_${direccion}`).click();
+}
+
+function previsualizarFoto(direccion, input) {
+    if (input.files && input.files[0]) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const preview = document.getElementById(`preview_${direccion}`);
+            preview.src = e.target.result;
+            preview.classList.add('show');
+            preview.parentElement.classList.add('has-photo');
+            
+            // Guardar foto en memoria
+            fotosCapturadas[direccion] = e.target.result;
+            
+            // Actualizar contador
+            actualizarContadorFotos();
+            calcularProgreso();
+        };
+        reader.readAsDataURL(input.files[0]);
+    }
+}
+
+function actualizarContadorFotos() {
+    const total = Object.keys(fotosCapturadas).length;
+    document.getElementById('totalFotos').textContent = total;
+}
+
+// ========================================
+// PROGRESO POR SECCIÓN
+// ========================================
+function calcularProgreso() {
+    // Tab 1: Control (campos principales)
+    const campos1 = ['num_sitio', 'fecha', 'exposicion', 'uso_actual', 'pendiente'];
+    const completados1 = campos1.filter(id => document.getElementById(id)?.value).length;
+    document.getElementById('progress1').textContent = `${Math.round(completados1/campos1.length*100)}%`;
+    
+    // Tab 2: Arbolado (mínimo 5 árboles con datos completos)
+    const arboles = document.querySelectorAll('.arbol-row:not(.arbol-header)');
+    let arbolesCompletos = 0;
+    arboles.forEach((row, i) => {
+        const num = i + 1;
+        const esp = document.getElementById(`esp_${num}`)?.value;
+        const dn = document.getElementById(`dn_${num}`)?.value;
+        const at = document.getElementById(`at_${num}`)?.value;
+        if (esp && dn && at) arbolesCompletos++;
+    });
+    document.getElementById('progress2').textContent = `${Math.min(arbolesCompletos, 5)}/5`;
+    
+    // Tab 3: Estructura (árbol 1 mínimo)
+    const est1 = document.getElementById('est_esp_1')?.value ? 1 : 0;
+    document.getElementById('progress3').textContent = est1 ? '1/1' : '0/1';
+    
+    // Tab 4: Regeneración (distribución)
+    const regen = document.getElementById('regen_distribucion')?.value ? 100 : 0;
+    document.getElementById('progress4').textContent = `${regen}%`;
+    
+    // Tab 5: Combustibles (hojarasca)
+    const comb = document.getElementById('espesor_hojarasca')?.value ? 100 : 0;
+    document.getElementById('progress5').textContent = `${comb}%`;
+    
+    // Tab 6: Fotografías
+    const fotos = Object.keys(fotosCapturadas).length;
+    document.getElementById('progress6').textContent = `${fotos}/4`;
+}
+
+// ========================================
+// GUARDAR SITIO
+// ========================================
+function guardarSitio() {
+    mostrarCarga('Guardando sitio...');
+    
+    try {
+        const numSitio = document.getElementById('num_sitio').value;
+        if (!numSitio) {
+            throw new Error('El número de sitio es obligatorio');
+        }
+        
+        // Recopilar todos los datos
+        const sitio = {
+            id: `sitio_${Date.now()}`,
+            timestamp: new Date().toISOString(),
+            
+            // Identificación
+            umafor: document.getElementById('umafor').value,
+            predio: document.getElementById('predio').value,
+            unidad_manejo: document.getElementById('unidad_manejo').value,
+            num_sitio: numSitio,
+            
+            // GPS
+            lat: document.getElementById('lat').textContent,
+            lon: document.getElementById('lon').textContent,
+            utm_x: document.getElementById('utm_x').textContent,
+            utm_y: document.getElementById('utm_y').textContent,
+            alt: document.getElementById('alt').textContent,
+            accuracy: document.getElementById('acc').textContent,
+            
+            // Control
+            fecha: document.getElementById('fecha').value,
+            brigada: document.getElementById('brigada').value,
+            paraje: document.getElementById('paraje').value,
+            tamanio: document.getElementById('tamanio').value,
+            datum: document.getElementById('datum').value,
+            pendiente: document.getElementById('pendiente').value,
+            exposicion: document.getElementById('exposicion').value,
+            compactacion: document.getElementById('compactacion').value,
+            textura: document.getElementById('textura').value,
+            material_pred: document.getElementById('material_pred').value,
+            materia_organica: document.getElementById('materia_organica').value,
+            otra_capa: document.getElementById('otra_capa').value,
+            
+            // Uso y erosión
+            uso_actual: document.getElementById('uso_actual').value,
+            uso_agricola: document.getElementById('uso_agricola').value,
+            uso_pecuario: document.getElementById('uso_pecuario').value,
+            elementos: document.getElementById('elementos').value,
+            erosion_laminar: document.getElementById('erosion_laminar').value,
+            erosion_canalillos: document.getElementById('erosion_canalillos').value,
+            erosion_carcavas: document.getElementById('erosion_carcavas').value,
+            erosion_antropogenica: document.getElementById('erosion_antropogenica').value,
+            accesibilidad: document.getElementById('accesibilidad').value,
+            perturbaciones: document.getElementById('perturbaciones').value,
+            
+            // Coberturas
+            cobertura_arborea: document.getElementById('cobertura_arborea').value,
+            cobertura_herbaceas: document.getElementById('cobertura_herbaceas').value,
+            cobertura_pastizal: document.getElementById('cobertura_pastizal').value,
+            cobertura_otra: document.getElementById('cobertura_otra').value,
+            tratamiento_silvicola: document.getElementById('tratamiento_silvicola').value,
+            tratamiento_complementario: document.getElementById('tratamiento_complementario').value,
+            observaciones: document.getElementById('observaciones').value,
+            
+            // Arbolado
+            arboles: recopilarArboles(),
+            
+            // Estructura
+            estructura: recopilarEstructura(),
+            
+            // Incremento
+            incremento: recopilarIncremento(),
+            
+            // Regeneración
+            regeneracion: recopilarRegeneracion(),
+            
+            // Combustibles
+            combustibles: recopilarCombustibles(),
+            
+            // Fotografías
+            fotos: fotosCapturadas,
+            
+            // Metadata
+            sincronizado: false
+        };
+        
+        // Guardar en localStorage
+        sitesData[sitio.id] = sitio;
+        localStorage.setItem('tosibuena_inventario_v2', JSON.stringify(sitesData));
+        
+        ocultarCarga();
+        mostrarAlerta('success', `✅ Sitio ${numSitio} guardado exitosamente en este dispositivo`);
+        actualizarEstadisticas();
+        
+    } catch (error) {
+        ocultarCarga();
+        mostrarAlerta('error', 'Error al guardar: ' + error.message);
+    }
+}
+
+function recopilarArboles() {
+    const arboles = [];
+    document.querySelectorAll('.arbol-row:not(.arbol-header)').forEach((row, i) => {
+        const num = i + 1;
+        const esp = document.getElementById(`esp_${num}`)?.value;
+        if (esp) {
+            arboles.push({
+                numero: num,
+                especie: esp,
+                dominancia: document.getElementById(`do_${num}`)?.value,
+                dn: document.getElementById(`dn_${num}`)?.value,
+                at: document.getElementById(`at_${num}`)?.value,
+                ac: document.getElementById(`ac_${num}`)?.value
+            });
+        }
+    });
+    return arboles;
+}
+
+function recopilarEstructura() {
+    const estructura = [];
+    for (let i = 1; i <= 5; i++) {
+        const esp = document.getElementById(`est_esp_${i}`)?.value;
+        if (esp) {
+            estructura.push({
+                arbol: i,
+                especie: esp,
+                dominancia: document.getElementById(`est_do_${i}`)?.value,
+                dn: document.getElementById(`est_dn_${i}`)?.value,
+                at: document.getElementById(`est_at_${i}`)?.value,
+                ac: document.getElementById(`est_ac_${i}`)?.value,
+                dcns: document.getElementById(`est_dcns_${i}`)?.value,
+                dceo: document.getElementById(`est_dceo_${i}`)?.value,
+                df1: document.getElementById(`est_df1_${i}`)?.value,
+                ub1: document.getElementById(`est_ub1_${i}`)?.value,
+                df2: document.getElementById(`est_df2_${i}`)?.value,
+                ub2: document.getElementById(`est_ub2_${i}`)?.value,
+                sa: document.getElementById(`est_sa_${i}`)?.value,
+                cs: document.getElementById(`est_cs_${i}`)?.value,
+                azimut: document.getElementById(`est_azt_${i}`)?.value,
+                distancia: document.getElementById(`est_dist_${i}`)?.value
+            });
         }
     }
+    return estructura;
+}
 
-    function guardarSitio() {
-        const r = document.getElementById('rodal').value;
-        if(!r) return alert("Falta ID de Rodal");
-        const id = Date.now();
-        sitesData[id] = { 
-            rodal: r, 
-            num: document.getElementById('num_sitio').value, 
-            fecha: document.getElementById('fecha').value,
-            utm_x: document.getElementById('utm_x').innerText,
-            utm_y: document.getElementById('utm_y').innerText
-        };
-        localStorage.setItem('tosibuena_muestreo', JSON.stringify(sitesData));
-        renderizarProgreso(r);
-        alert("Sitio guardado exitosamente en este teléfono.");
+function recopilarIncremento() {
+    const incremento = [];
+    for (let v = 1; v <= 3; v++) {
+        const esp = document.getElementById(`vir_esp_${v}`)?.value;
+        if (esp) {
+            const radios = {};
+            for (let r = 1; r <= 10; r++) {
+                radios[`r${r}`] = document.getElementById(`vir_r${r}_${v}`)?.value;
+            }
+            incremento.push({
+                viruta: v,
+                especie: esp,
+                dominancia: document.getElementById(`vir_do_${v}`)?.value,
+                dn: document.getElementById(`vir_dn_${v}`)?.value,
+                at: document.getElementById(`vir_at_${v}`)?.value,
+                edad: document.getElementById(`vir_edad_${v}`)?.value,
+                na: document.getElementById(`vir_na_${v}`)?.value,
+                tp: document.getElementById(`vir_tp_${v}`)?.value,
+                ce: document.getElementById(`vir_ce_${v}`)?.value,
+                radios
+            });
+        }
     }
+    return incremento;
+}
 
-    function sincronizarSupabase() {
-        const total = Object.keys(sitesData).length;
-        if(total === 0) return alert("No hay datos pendientes.");
-        alert("Buscando señal... Sincronizando " + total + " registros a Supabase.");
-    }
-
-    function resetFormulario() {
-        if(confirm("¿Limpiar para nuevo sitio? Los datos no guardados se perderán.")) location.reload();
-    }
-
-    window.onload = () => {
-        initMapa();
-        poblarSelects();
+function recopilarRegeneracion() {
+    return {
+        tamanio: document.getElementById('regen_tamanio').value,
+        distribucion: document.getElementById('regen_distribucion').value,
+        especies: [] // Implementar lógica para recopilar tabla
     };
+}
+
+function recopilarCombustibles() {
+    return {
+        pendiente: document.getElementById('combustible_pendiente').value,
+        espesor_hojarasca: document.getElementById('espesor_hojarasca').value,
+        altura_arbustos: document.getElementById('altura_arbustos').value,
+        altura_pastos: document.getElementById('altura_pastos').value,
+        altura_hierbas: document.getElementById('altura_hierbas').value,
+        cobertura_dosel: document.getElementById('cobertura_dosel').value
+        // Agregar combustibles leñosos
+    };
+}
+
+// ========================================
+// SINCRONIZACIÓN SUPABASE
+// ========================================
+async function sincronizarSupabase() {
+    const pendientes = Object.values(sitesData).filter(s => !s.sincronizado);
+    
+    if (pendientes.length === 0) {
+        mostrarAlerta('info', 'No hay sitios pendientes de sincronización');
+        return;
+    }
+    
+    mostrarCarga(`Sincronizando ${pendientes.length} sitios...`);
+    
+    try {
+        for (const sitio of pendientes) {
+            // Insertar en Supabase (implementar según estructura de BD)
+            const { data, error } = await _supabase
+                .from('inventario_sitios')
+                .insert([sitio]);
+            
+            if (error) throw error;
+            
+            // Marcar como sincronizado
+            sitio.sincronizado = true;
+        }
+        
+        localStorage.setItem('tosibuena_inventario_v2', JSON.stringify(sitesData));
+        ocultarCarga();
+        mostrarAlerta('success', `✅ ${pendientes.length} sitios sincronizados exitosamente`);
+        actualizarEstadisticas();
+        
+    } catch (error) {
+        ocultarCarga();
+        mostrarAlerta('error', 'Error en sincronización: ' + error.message);
+    }
+}
+
+// ========================================
+// RESET FORMULARIO
+// ========================================
+function resetFormulario() {
+    if (confirm('¿Limpiar formulario para nuevo sitio? Los datos no guardados se perderán.')) {
+        location.reload();
+    }
+}
+
+// ========================================
+// ESTADÍSTICAS
+// ========================================
+function actualizarEstadisticas() {
+    const total = Object.keys(sitesData).length;
+    const pendientes = Object.values(sitesData).filter(s => !s.sincronizado).length;
+    
+    document.getElementById('totalSitios').textContent = total;
+    document.getElementById('pendientesSync').textContent = pendientes;
+    document.getElementById('contadorSitiosLocal').textContent = total;
+    
+    // Calcular rodales completos (ejemplo: 2 sitios por rodal)
+    const rodales = {};
+    Object.values(sitesData).forEach(s => {
+        const r = s.num_sitio ? Math.floor(s.num_sitio / 2) : 0;
+        rodales[r] = (rodales[r] || 0) + 1;
+    });
+    const completos = Object.values(rodales).filter(count => count >= 2).length;
+    document.getElementById('rodalesCompletos').textContent = completos;
+}
+
+// ========================================
+// UTILIDADES UI
+// ========================================
+function mostrarCarga(mensaje) {
+    document.getElementById('loadingMessage').textContent = mensaje;
+    document.getElementById('loadingOverlay').classList.add('show');
+}
+
+function ocultarCarga() {
+    document.getElementById('loadingOverlay').classList.remove('show');
+}
+
+function mostrarAlerta(tipo, mensaje) {
+    const alert = document.createElement('div');
+    alert.className = `alert alert-${tipo}`;
+    alert.innerHTML = `
+        <i class="fas fa-${tipo === 'success' ? 'check-circle' : tipo === 'error' ? 'times-circle' : 'info-circle'}"></i>
+        <span>${mensaje}</span>
+    `;
+    
+    document.body.appendChild(alert);
+    
+    setTimeout(() => {
+        alert.style.opacity = '0';
+        setTimeout(() => alert.remove(), 300);
+    }, 3000);
+}
+
+// ========================================
+// SERVICE WORKER (PWA)
+// ========================================
+if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('sw.js')
+        .then(reg => console.log('✅ Service Worker registrado'))
+        .catch(err => console.warn('⚠️ Service Worker falló:', err));
+}
 </script>
 </body>
 </html>
